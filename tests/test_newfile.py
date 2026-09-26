@@ -699,6 +699,49 @@ class Audit2Tests(unittest.TestCase):
         self.assertEqual(out, f"OPEN {os.path.join(e.target, 'dir 2')}")
 
 
+class Audit3Tests(unittest.TestCase):
+    """Regressions for bugs found in the third audit."""
+
+    def test_finder_active_mode_runs_without_override(self):
+        e = Env()
+        fb = tmpdir("fallback")
+        env = e.base(location="finder_active", default_folder=fb)
+        env.pop("NF_TEST_FINDER")  # real frontmost/menu-bar app lookup; Finder itself stays faked off
+        out = subprocess.run(["osascript", "-l", "JavaScript", "./newfile.js", "filter", "x.txt"], cwd=SRC, env=env,
+                             capture_output=True, text=True, timeout=30)
+        it = json.loads(out.stdout)["items"][0]
+        self.assertEqual(it["title"], "x.txt")
+        with open(os.path.join(SRC, "newfile.js")) as f:
+            self.assertIn("menuBarOwningApplication", f.read())
+
+    def test_system_files_are_not_added_as_templates(self):
+        e = Env()
+        src = tmpdir("src")
+        write(os.path.join(src, ".DS_Store"), b"\0")
+        self.assertIn("system file", e.add(os.path.join(src, ".DS_Store")))
+        self.assertNotIn(".DS_Store", os.listdir(e.templates))
+
+    def test_unreadable_templates_folder_is_reported(self):
+        e = Env()
+        custom = tmpdir("locked")
+        write(os.path.join(custom, "A.txt"), "")
+        os.chmod(custom, 0o000)
+        try:
+            items = e.sf("", templates_folder=custom)
+            self.assertIn("Can’t read the templates folder", " ".join(titles(items)))
+            self.assertNotIn("No templates yet", titles(items))
+        finally:
+            os.chmod(custom, 0o755)
+
+    def test_corrupt_recent_list_is_ignored(self):
+        e = Env()
+        write(os.path.join(e.data, "recent.json"), "{not json")
+        self.assertEqual(e.sf("notes")[0]["title"], "notes.txt")
+        e.run_item(e.sf("x.py")[0])
+        with open(os.path.join(e.data, "recent.json")) as f:
+            self.assertEqual(json.load(f)[0], "Python script.py")
+
+
 class PlistTests(unittest.TestCase):
     def test_build_and_plist(self):
         subprocess.run([sys.executable, "tools/build.py"], cwd=ROOT, check=True, capture_output=True)

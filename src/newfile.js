@@ -281,7 +281,8 @@ function loadTemplates() {
   if (!isDir(t.path)) return { error: `Templates folder not found: ${tilde(t.path)}`, dir: t.path, list: [] };
   const names = FM.contentsOfDirectoryAtPathError(t.path, null);
   const list = [];
-  if (!names.isNil()) {
+  if (names.isNil()) return { error: `Can’t read the templates folder ${tilde(t.path)}`, dir: t.path, list };
+  {
     for (const n of names.js.map((x) => x.js)) {
       if (JUNK.has(n) || n.startsWith("._") || n.startsWith(".seeding-")) continue;
       const p = join(t.path, n);
@@ -417,8 +418,15 @@ end timeout`;
 function frontmostIsFinder() {
   const fake = env("NF_TEST_FRONTMOST", null);
   if (fake !== null) return fake === "com.apple.finder";
-  const app = WS.frontmostApplication;
-  return !app.isNil() && app.bundleIdentifier.js === "com.apple.finder";
+  // Alfred's window can make Alfred the frontmost app; the menu bar still belongs to the app
+  // the user was in, so ask for that first.
+  for (const app of [WS.menuBarOwningApplication, WS.frontmostApplication]) {
+    if (app.isNil() || app.bundleIdentifier.isNil()) continue;
+    const id = app.bundleIdentifier.js;
+    if (id.startsWith("com.runningwithcrayons.Alfred")) continue;
+    return id === "com.apple.finder";
+  }
+  return false;
 }
 
 // -> { dir, note } ; note explains a fallback
@@ -814,6 +822,7 @@ function addTemplates(arg) {
   for (const p of paths) {
     const src = resolved(standardize(expand(p)));
     if (!exists(src)) { problems.push(`${basename(src)} not found`); continue; }
+    if (JUNK.has(basename(src)) || basename(src).startsWith("._")) { problems.push(`${basename(src)} is a system file`); continue; }
     if (isDir(src) && !isPackage(src)) { problems.push(`${basename(src)} is a folder`); continue; }
     if (resolved(parent(src)) === resolved(t.path)) { problems.push(`${basename(src)} is already a template`); continue; }
     let done = null;
