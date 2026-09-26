@@ -3,24 +3,77 @@
 <plist version="1.0">
 <dict>
 	<key>bundleid</key>
-	<string>com.xorro.new-file</string>
-	<key>name</key>
-	<string>New File</string>
-	<key>description</key>
-	<string>Create a new file (from templates) in the frontmost Finder folder.</string>
-	<key>createdby</key>
-	<string>xorro</string>
-	<key>version</key>
-	<string>0.1.0</string>
-	<key>readme</key>
-	<string>See README.md</string>
-	<key>objects</key>
-	<array/>
+	<string>io.github.x-o-r-r-o.new-file</string>
+	<key>category</key>
+	<string>Productivity</string>
 	<key>connections</key>
 	<dict/>
+	<key>createdby</key>
+	<string>x-o-r-r-o</string>
+	<key>description</key>
+	<string>Create a new file (from templates) in the frontmost Finder folder.</string>
+	<key>name</key>
+	<string>New File</string>
+	<key>objects</key>
+	<array/>
+	<key>readme</key>
+	<string># New File
+
+Create a new file (from templates) in the frontmost Finder folder.
+
+&gt; **Status:** planned — not yet functional. See [PLAN.md](PLAN.md).
+
+## Usage
+
+Create a new file (from templates) in the frontmost Finder folder via the `new` keyword.
+
+![New File results in Alfred](images/new.png)
+
+* &lt;kbd&gt;↩&lt;/kbd&gt; Primary action.
+* &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Secondary action.
+* &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;Y&lt;/kbd&gt; Quick Look.
+
+Every keyword can be changed in the Workflow’s Configuration.
+
+## Development
+
+```bash
+./build.sh   # -&gt; dist/alfred-new-file-&lt;version&gt;.alfredworkflow
+```
+
+## AI disclosure
+
+This workflow is developed with the help of Claude (Anthropic), an AI assistant. All code is reviewed and tested by the author.
+</string>
 	<key>uidata</key>
 	<dict/>
 	<key>userconfigurationconfig</key>
-	<array/>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>new</string>
+				<key>placeholder</key>
+				<string>new</string>
+				<key>required</key>
+				<true/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string></string>
+			<key>label</key>
+			<string>New keyword</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>keyword_new</string>
+		</dict>
+	</array>
+	<key>version</key>
+	<string>0.1.0</string>
+	<key>webaddress</key>
+	<string>https://github.com/x-o-r-r-o/alfred-new-file</string>
 </dict>
 </plist>
