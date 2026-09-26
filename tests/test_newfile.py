@@ -658,6 +658,47 @@ class Audit1Tests(unittest.TestCase):
         self.assertNotIn("Application(", js)  # no untimed Apple Events
 
 
+class Audit2Tests(unittest.TestCase):
+    """Regressions for bugs found in the second audit."""
+
+    def test_blank_documents_without_template_are_valid(self):
+        e = Env()
+        custom = tmpdir("empty")  # no templates at all
+        for n in ["a.docx", "b.rtf", "c.odt"]:
+            it = e.sf(n, templates_folder=custom)[0]
+            self.assertIn("Empty file", it["subtitle"])
+            e.run_item(it)
+            self.assertGreater(os.path.getsize(os.path.join(e.target, n)), 0, n)
+        with open(os.path.join(e.target, "a.docx"), "rb") as f:
+            self.assertEqual(f.read(2), b"PK")
+
+    def test_clipboard_only_into_text_types(self):
+        e = Env()
+        custom = tmpdir("empty")
+        self.assertFalse(e.sf("x.png", templates_folder=custom)[0]["mods"]["ctrl"]["valid"])
+        self.assertFalse(e.sf("x.zip", templates_folder=custom)[0]["mods"]["ctrl"]["valid"])
+        for n in ["x.yaml", "x.swift", "x.unknownext", "Makefile", "x.docx"]:
+            self.assertTrue(e.sf(n, templates_folder=custom)[0]["mods"]["ctrl"]["valid"], n)
+
+    def test_fifo_in_templates_is_ignored(self):
+        e = Env()
+        e.sf("")
+        os.mkfifo(os.path.join(e.templates, "Pipe.txt"))
+        items = e.sf("x.txt")  # would block forever if the FIFO were sniffed
+        self.assertNotIn("Pipe template", " ".join(i.get("subtitle", "") for i in items))
+
+    def test_write_itself_is_exclusive(self):
+        e = Env()
+        write(os.path.join(e.target, "keep.txt"), "original")
+        os.mkdir(os.path.join(e.target, "dir"))
+        out = e.run("x", nf_action="open", nf_dir=e.target, nf_name="keep.txt", nf_kind="file",
+                    nf_template="", NF_TEST_NO_PRECHECK="1", NF_TEST_CLIPBOARD="new")
+        self.assertEqual(out, f"OPEN {os.path.join(e.target, 'keep 2.txt')}")
+        self.assertEqual(read(os.path.join(e.target, "keep.txt")), "original")
+        out = e.run("x", nf_action="open", nf_dir=e.target, nf_name="dir", nf_kind="folder", NF_TEST_NO_PRECHECK="1")
+        self.assertEqual(out, f"OPEN {os.path.join(e.target, 'dir 2')}")
+
+
 class PlistTests(unittest.TestCase):
     def test_build_and_plist(self):
         subprocess.run([sys.executable, "tools/build.py"], cwd=ROOT, check=True, capture_output=True)

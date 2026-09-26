@@ -7,6 +7,7 @@
 // Data only ever arrives through argv and environment variables, never through code.
 ObjC.import("Foundation");
 ObjC.import("AppKit");
+ObjC.import("CoreServices");
 
 const ENV = $.NSProcessInfo.processInfo.environment;
 function env(name, fallback) {
@@ -71,6 +72,11 @@ function isDir(p) {
 // lstat-style existence: also true for broken symlinks
 function exists(p) {
   return !FM.attributesOfItemAtPathError(p, null).isNil();
+}
+// Regular file (following symlinks): not a FIFO, socket or device
+function isRegular(p) {
+  const a = FM.attributesOfItemAtPathError(resolved(p), null);
+  return !a.isNil() && a.objectForKey("NSFileType").js === "NSFileTypeRegular";
 }
 function isPackage(p) {
   return !!WS.isFilePackageAtPath(p);
@@ -279,8 +285,8 @@ function loadTemplates() {
     for (const n of names.js.map((x) => x.js)) {
       if (JUNK.has(n) || n.startsWith("._") || n.startsWith(".seeding-")) continue;
       const p = join(t.path, n);
-      if (isDir(p) && !isPackage(p)) continue;
       if (!FM.fileExistsAtPath(p)) continue; // broken symlink
+      if (isDir(p) ? !isPackage(p) : !isRegular(p)) continue;
       const { base, ext } = splitName(n);
       list.push({ file: n, path: p, label: base, ext: ext.toLowerCase(), keepName: keepsName(n) });
     }
@@ -491,9 +497,22 @@ function where(ctx) {
 function canUseClipboard(name, template) {
   const ext = splitName(name).ext.toLowerCase();
   if (TEXTUTIL.includes(ext)) return true;
-  if (!template) return true;
+  if (!template) return isTextType(ext);
   if (isDir(template)) return false;
   return looksLikeText(template);
+}
+
+// Unknown extensions and anything conforming to public.text (source code, JSON, CSV…) take text;
+// images, archives and other known binary types don't.
+function isTextType(ext) {
+  if (!ext) return true;
+  try {
+    const uti = $.UTTypeCreatePreferredIdentifierForTag($.kUTTagClassFilenameExtension, $(ext), $());
+    const id = ObjC.castRefToObject(uti).js;
+    return id.startsWith("dyn.") || !!$.UTTypeConformsTo(uti, $.kUTTypeText);
+  } catch (e) {
+    return true;
+  }
 }
 
 // Text if the first 8 KB have no NUL byte (cheap enough to run for every row)
@@ -665,7 +684,11 @@ function contentsFor(name, dir, templatePath, action) {
     }
     return { data: textToData(text) };
   }
-  if (!templatePath) return { data: textToData("") };
+  if (!templatePath) {
+    if (!TEXTUTIL.includes(ext)) return { data: textToData("") };
+    const d = convertText("", ext); // a 0-byte .docx wouldn't open
+    return d ? { data: d } : { error: `textutil couldn’t create a .${ext} file` };
+  }
   const d = readData(templatePath);
   if (!d) return { error: `Can’t read the template “${basename(templatePath)}”` };
   const text = dataToText(d);
@@ -682,12 +705,13 @@ function createFile(dir, name, templatePath, action) {
     content = contentsFor(name, dir, templatePath, action);
     if (content.error) return content;
   }
+  const precheck = env("NF_TEST_NO_PRECHECK", "") !== "1"; // tests prove the write itself is exclusive
   for (const n of candidates(name)) {
     const p = join(dir, n);
-    if (exists(p)) continue;
+    if (precheck && exists(p)) continue;
     let ok;
     if (isPkg) ok = FM.copyItemAtPathToPathError(templatePath, p, null);
-    else ok = content.data.writeToFileOptionsError(p, $.NSDataWritingWithoutOverwriting, null);
+    else ok = content.data.writeToFileOptionsError(p, 2 /* NSDataWritingWithoutOverwriting */, null);
     if (ok) {
       if (isPkg) FM.setAttributesOfItemAtPathError($({ NSFileModificationDate: $.NSDate.date, NSFileCreationDate: $.NSDate.date }), p, null);
       else fixPermissions(p, n, templatePath, content.data);
@@ -721,9 +745,10 @@ function createError(dir, name) {
 }
 
 function createFolder(dir, name) {
+  const precheck = env("NF_TEST_NO_PRECHECK", "") !== "1";
   for (const n of candidates(name, true)) {
     const p = join(dir, n);
-    if (exists(p)) continue;
+    if (precheck && exists(p)) continue;
     if (FM.createDirectoryAtPathWithIntermediateDirectoriesAttributesError(p, false, $(), null)) return { path: p };
     if (exists(p)) continue;
     return { error: createError(dir, n) };
