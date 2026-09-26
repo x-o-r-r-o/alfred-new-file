@@ -3,7 +3,7 @@
 // Usage:
 //   osascript -l JavaScript newfile.js filter <query>        Script Filter
 //   osascript -l JavaScript newfile.js run <path>            create (reads nf_* variables)
-//   osascript -l JavaScript newfile.js add-template <paths>  Universal Action (tab-separated paths)
+//   osascript -l JavaScript newfile.js add-template <paths>  Universal Action (tab-separated or separate args)
 // Data only ever arrives through argv and environment variables, never through code.
 ObjC.import("Foundation");
 ObjC.import("AppKit");
@@ -195,10 +195,11 @@ function sanitize(name) {
     .trim();
 }
 
-// "report.md" -> "report 2.md" -> "report 3.md"; "report 2.md" continues at 3
+// "report.md" -> "report 2.md" -> "report 3.md"; "report 2.md" continues at 3, but a year or
+// other long number is part of the name: "Budget 2026.md" -> "Budget 2026 2.md"
 function numbered(name, n, folder) {
   const { base, ext } = folder ? { base: name, ext: "" } : splitName(name);
-  const m = base.match(/^(.*\S) (\d{1,6})$/);
+  const m = base.match(/^(.*\S) ([1-9]\d{0,2})$/);
   const stem = m ? m[1] : base;
   const start = m ? Number(m[2]) : 1;
   const b = `${stem} ${start + n}`;
@@ -274,6 +275,11 @@ function seed(path) {
   return exists(path);
 }
 
+// Case- and normalization-insensitive form for comparing names ("Café" typed vs NFD "Café" on disk)
+function fold(s) {
+  return s.normalize("NFC").toLowerCase();
+}
+
 function loadTemplates() {
   const t = templatesDir();
   if (!t) return { error: "Workflow data folder is not set", list: [] };
@@ -289,7 +295,7 @@ function loadTemplates() {
       if (!FM.fileExistsAtPath(p)) continue; // broken symlink
       if (isDir(p) ? !isPackage(p) : !isRegular(p)) continue;
       const { base, ext } = splitName(n);
-      list.push({ file: n, path: p, label: base, ext: ext.toLowerCase(), keepName: keepsName(n) });
+      list.push({ file: n, key: fold(n), path: p, label: base, ext: fold(ext), keepName: keepsName(n) });
     }
   }
   const recent = loadUsage();
@@ -346,13 +352,19 @@ function recordUsage(file) {
 function pad(n) {
   return String(n).padStart(2, "0");
 }
-const MARKUP = ["html", "htm", "xhtml", "xml", "svg", "plist"];
+const MARKUP = ["html", "htm", "xhtml", "xml", "svg", "plist", "xib", "storyboard"];
+const JSONISH = ["json", "jsonc", "json5", "geojson", "webmanifest"];
 function escapeMarkup(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+// the inside of a JSON string, so "{{name}}" stays valid JSON for any name
+function escapeJSON(s) {
+  return JSON.stringify(s).slice(1, -1);
 }
 function fillPlaceholders(text, name, dir) {
   if (!text.includes("{{")) return text;
-  const esc = MARKUP.includes(splitName(name).ext.toLowerCase()) ? escapeMarkup : (x) => x;
+  const ext = splitName(name).ext.toLowerCase();
+  const esc = MARKUP.includes(ext) ? escapeMarkup : JSONISH.includes(ext) ? escapeJSON : (x) => x;
   const now = new Date();
   const values = {
     name: splitName(name).base,
@@ -378,17 +390,20 @@ function finderLocation() {
     if (fake === "error") return { error: true };
     return { path: fake };
   }
-  if (TEST && env("NF_REAL_FINDER", "") !== "1") return { none: true };
-  const r = captureAll("/usr/bin/osascript", ["-e", FINDER_SCRIPT]);
+  const raw = env("NF_TEST_FINDER_RAW", null); // test suite: osascript's result as JSON {status, out, err}
+  if (TEST && raw === null && env("NF_REAL_FINDER", "") !== "1") return { none: true };
+  const r = raw !== null ? JSON.parse(raw) : captureAll("/usr/bin/osascript", ["-e", FINDER_SCRIPT]);
   if (!r) return { error: true };
   const out = r.out.replace(/\n$/, "");
   if (r.status !== 0) {
     if (/-1743/.test(r.err)) return { denied: true };
     if (/-1712/.test(r.err)) return { error: true }; // timed out
+    if (/-600\b/.test(r.err)) return { none: true }; // Finder quit while asking
     return { nonfs: true };
   }
   if (out === "none:") return { none: true };
   if (out === "denied:") return { denied: true };
+  if (out === "timeout:") return { error: true };
   if (out.startsWith("path:") && out.length > 5) return { path: out.slice(5) };
   return { nonfs: true };
 }
@@ -403,6 +418,7 @@ const FINDER_SCRIPT = `with timeout of 3 seconds
       set u to URL of (target of Finder window 1)
     on error number n
       if n is -1743 then return "denied:"
+      if n is -1712 then return "timeout:"
       return "nonfs:"
     end try
     if u does not start with "file://" then return "nonfs:"
@@ -410,6 +426,7 @@ const FINDER_SCRIPT = `with timeout of 3 seconds
       return "path:" & POSIX path of (insertion location as alias)
     on error number n
       if n is -1743 then return "denied:"
+      if n is -1712 then return "timeout:"
       return "nonfs:"
     end try
   end tell
@@ -442,7 +459,7 @@ function resolveTarget() {
   if (loc.error) return fb("Finder didn’t answer");
   if (loc.nonfs) return fb("the Finder window isn’t a folder");
   const p = standardize(loc.path);
-  if (/(^|\/)\.Trash(\/|$)/.test(p)) return fb("Finder is showing the Trash");
+  if (/(^|\/)\.Trash(es)?(\/|$)/.test(p)) return fb("Finder is showing the Trash"); // ~/.Trash, /Volumes/X/.Trashes/501
   if (!isDir(p)) return fb("the Finder folder no longer exists");
   if (!writable(p)) return fb(`“${basename(p)}” is read-only`);
   return { dir: p, note: "" };
@@ -454,6 +471,8 @@ function resolveTarget() {
 // path). The longest existing folder prefix is the target; the rest (after "/" or a space) is the name.
 function parsePath(q) {
   const full = expand(q);
+  // a package (an .app, .rtfd or .key bundle) is a document to Finder: use the folder it's in
+  if (isDir(full) && isPackage(full)) return { dir: parent(standardize(full)), name: "" };
   if (isDir(full)) return { dir: standardize(full), name: "" };
   if (exists(full) && !full.endsWith("/")) return { dir: parent(standardize(full)), name: "" };
   for (let i = full.length - 1; i >= 0; i--) {
@@ -612,8 +631,8 @@ function filterItems(query) {
   if (err) return [invalidName(ctx, name, err, false)];
 
   const { ext } = splitName(name);
-  const lext = ext.toLowerCase();
-  const exact = tpl.list.filter((t) => t.file.toLowerCase() === name.toLowerCase());
+  const lext = fold(ext);
+  const exact = tpl.list.filter((t) => t.key === fold(name));
   const fileRow = (n, t, extra) =>
     createItem(ctx, { name: n, kind: "file", template: t, title: n, subtitle: extra ? `${extra} · ${where(ctx)}` : undefined, icon: t ? templateIcon(t) : icon("file") });
 
@@ -634,9 +653,10 @@ function filterItems(query) {
     for (const t of exact) items.push(fileRow(name, t, `${t.label} template`));
     items.push(fileRow(name, null, "Empty file"));
   } else {
-    // no extension: one row per template type
+    // no extension: one row per template type ("notes." becomes "notes.md", not "notes..md")
+    const stem = name.replace(/\.+$/, "") || name;
     for (const t of exact) items.push(fileRow(name, t, `${t.label} template`));
-    for (const t of tpl.list.filter((t) => t.ext && !t.keepName && !exact.includes(t))) items.push(fileRow(`${name}.${t.ext}`, t, `${t.label} template`));
+    for (const t of tpl.list.filter((t) => t.ext && !t.keepName && !exact.includes(t))) items.push(fileRow(`${stem}.${t.ext}`, t, `${t.label} template`));
     items.push(fileRow(name, null, "Empty file without an extension"));
     items.push(createItem(ctx, { name, kind: "folder", title: `New folder “${name}”`, icon: icon("folder") }));
   }
@@ -821,7 +841,7 @@ function addTemplates(arg) {
   const added = [], problems = [];
   for (const p of paths) {
     const src = resolved(standardize(expand(p)));
-    if (!exists(src)) { problems.push(`${basename(src)} not found`); continue; }
+    if (!FM.fileExistsAtPath(src)) { problems.push(`${basename(src)} not found`); continue; } // also a broken symlink
     if (JUNK.has(basename(src)) || basename(src).startsWith("._")) { problems.push(`${basename(src)} is a system file`); continue; }
     if (isDir(src) && !isPackage(src)) { problems.push(`${basename(src)} is a folder`); continue; }
     if (resolved(parent(src)) === resolved(t.path)) { problems.push(`${basename(src)} is already a template`); continue; }
@@ -853,7 +873,8 @@ function run(argv) {
       case "run":
         return runAction();
       case "add-template":
-        return addTemplates(query);
+        // several files arrive either as one tab-separated argument or as separate arguments
+        return addTemplates(rest.join("\t"));
       default:
         return JSON.stringify({ items: [info(`Unknown command: ${cmd}`, "", "error")] });
     }

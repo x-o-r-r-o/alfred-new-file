@@ -742,6 +742,119 @@ class Audit3Tests(unittest.TestCase):
             self.assertEqual(json.load(f)[0], "Python script.py")
 
 
+class Audit4Tests(unittest.TestCase):
+    """Regressions for bugs found in the fourth audit."""
+
+    def test_package_from_universal_action_uses_its_folder(self):
+        e = Env()
+        dest = tmpdir("dest")
+        for pkg in ["Doc.rtfd", "My.app"]:
+            os.mkdir(os.path.join(dest, pkg))
+            items = e.sf(os.path.join(dest, pkg))
+            self.assertEqual(find(items, "Markdown")["arg"], os.path.join(dest, "Untitled.md"), pkg)
+        # a path typed inside a package is still honoured
+        os.mkdir(os.path.join(dest, "My.app", "Contents"))
+        self.assertEqual(e.sf(os.path.join(dest, "My.app", "Contents", "x.txt"))[0]["arg"],
+                         os.path.join(dest, "My.app", "Contents", "x.txt"))
+
+    def test_years_are_not_incremented(self):
+        e = Env()
+        write(os.path.join(e.target, "Budget 2026.md"), "keep")
+        it = e.sf("Budget 2026.md")[0]
+        self.assertEqual(it["arg"], os.path.join(e.target, "Budget 2026 2.md"))
+        e.run_item(it)
+        self.assertIn("Budget 2026 2.md", e.files())
+        write(os.path.join(e.target, "Chapter 12.md"), "")
+        self.assertEqual(e.sf("Chapter 12.md")[0]["arg"], os.path.join(e.target, "Chapter 13.md"))
+
+    def test_apostrophe_escaped_in_markup_and_json_stays_valid(self):
+        e = Env()
+        e.sf("")
+        write(os.path.join(e.templates, "Page.svg"), "<svg><title data-x='{{name}}'>{{name}}</title></svg>")
+        write(os.path.join(e.templates, "Package.json"), '{"name": "{{name}}", "dir": "{{folder}}"}\n')
+        e.run_item(find(e.sf("it's <x>.svg"), "it's <x>.svg", "Page template"))
+        self.assertEqual(read(os.path.join(e.target, "it's <x>.svg")),
+                         "<svg><title data-x='it&#39;s &lt;x&gt;'>it&#39;s &lt;x&gt;</title></svg>")
+        name = 'say "hi" \\ \u2028 ok.json'
+        e.run_item(find(e.sf(name), name, "Package template"))
+        data = json.loads(read(os.path.join(e.target, name)))
+        self.assertEqual(data["name"], name[:-5])
+
+    def test_decomposed_template_name_matches(self):
+        import unicodedata
+        e = Env()
+        custom = tmpdir("nfd")
+        write(os.path.join(custom, unicodedata.normalize("NFD", "Résumé.md")), "# CV")
+        write(os.path.join(custom, "A note.md"), "")  # sorts first unless the exact name wins
+        items = e.sf(unicodedata.normalize("NFC", "résumé.md"), templates_folder=custom)
+        self.assertIn("Résumé template", unicodedata.normalize("NFC", items[0]["subtitle"]))
+
+    def test_finder_results_are_classified(self):
+        e = Env()
+        fb = tmpdir("fallback")
+        cases = [
+            ({"status": 0, "out": "timeout:\n", "err": ""}, "didn’t answer"),
+            ({"status": 1, "out": "", "err": "execution error: Finder got an error: AppleEvent timed out. (-1712)"}, "didn’t answer"),
+            ({"status": 1, "out": "", "err": "execution error: Finder got an error: Application isn’t running. (-600)"}, None),
+            ({"status": 1, "out": "", "err": "execution error: Not authorized to send Apple events to Finder. (-1743)"}, "Automation"),
+            ({"status": 0, "out": "nonfs:\n", "err": ""}, "isn’t a folder"),
+            ({"status": 0, "out": "none:\n", "err": ""}, None),
+        ]
+        for raw, note in cases:
+            env = {"NF_TEST_FINDER_RAW": json.dumps(raw), "default_folder": fb}
+            base = e.base(**env)
+            base.pop("NF_TEST_FINDER")
+            out = subprocess.run(["osascript", "-l", "JavaScript", "./newfile.js", "filter", "x.txt"], cwd=SRC, env=base,
+                                 capture_output=True, text=True, timeout=30)
+            it = json.loads(out.stdout)["items"][0]
+            self.assertEqual(it["arg"], os.path.join(fb, "x.txt"), raw)
+            if note:
+                self.assertIn(note, it["subtitle"], raw)
+            else:
+                self.assertNotIn("(", it["subtitle"], raw)
+        raw = {"status": 0, "out": f"path:{e.target}/\n", "err": ""}
+        base = e.base(NF_TEST_FINDER_RAW=json.dumps(raw), default_folder=fb)
+        base.pop("NF_TEST_FINDER")
+        out = subprocess.run(["osascript", "-l", "JavaScript", "./newfile.js", "filter", "x.txt"], cwd=SRC, env=base,
+                             capture_output=True, text=True, timeout=30)
+        self.assertEqual(json.loads(out.stdout)["items"][0]["arg"], os.path.join(e.target, "x.txt"))
+
+    def test_trash_on_other_volumes_is_skipped(self):
+        e = Env()
+        fb = tmpdir("fallback")
+        trashes = os.path.join(tmpdir("vol"), ".Trashes", "501")
+        os.makedirs(trashes)
+        it = e.sf("x.txt", NF_TEST_FINDER=trashes, default_folder=fb)[0]
+        self.assertEqual(it["arg"], os.path.join(fb, "x.txt"))
+        self.assertIn("Trash", it["subtitle"])
+
+    def test_trailing_dot_is_not_doubled(self):
+        e = Env()
+        t = titles(e.sf("notes."))
+        self.assertIn("notes.md", t)
+        self.assertNotIn("notes..md", t)
+        self.assertIn("notes.", t)  # the literal name is still offered
+
+    def test_broken_symlink_is_not_added_as_template(self):
+        e = Env()
+        src = tmpdir("src")
+        link = os.path.join(src, "Gone.md")
+        os.symlink(os.path.join(src, "missing.md"), link)
+        self.assertIn("not found", e.add(link))
+        self.assertFalse(os.path.lexists(os.path.join(e.templates, "Gone.md")))
+
+    def test_add_templates_as_separate_arguments(self):
+        e = Env()
+        src = tmpdir("src")
+        a, b = os.path.join(src, "One.md"), os.path.join(src, "Two.txt")
+        write(a, "1")
+        write(b, "2")
+        out = subprocess.run(["osascript", "-l", "JavaScript", "./newfile.js", "add-template", a, b], cwd=SRC,
+                             env=e.base(), capture_output=True, text=True, timeout=30).stdout
+        self.assertIn("“One.md”, “Two.txt”", out)
+        self.assertTrue(os.path.exists(os.path.join(e.templates, "Two.txt")))
+
+
 class PlistTests(unittest.TestCase):
     def test_build_and_plist(self):
         subprocess.run([sys.executable, "tools/build.py"], cwd=ROOT, check=True, capture_output=True)
@@ -759,7 +872,7 @@ class PlistTests(unittest.TestCase):
                 self.assertRegex(kw, r"^\{var:keyword_\w+\}$")
             script = o["config"].get("script", "")
             if script:
-                self.assertIn('"$1"', script)  # data only through argv
+                self.assertTrue('"$1"' in script or '"$@"' in script, script)  # data only through argv
                 self.assertNotIn("{query}", script)
         self.assertTrue(p["readme"].startswith("## Usage"))
         self.assertEqual(p["bundleid"], "io.github.x-o-r-r-o.new-file")

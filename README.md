@@ -32,7 +32,7 @@ Add a selected file as a template via the Universal Action “Add as New File Te
 
 ![Adding a template](images/add.png)
 
-In text templates, `{{name}}` becomes the new file’s name without its extension, `{{filename}}` its full name, `{{folder}}` the folder’s name, and `{{date}}`, `{{time}}`, `{{year}}` and `{{user}}` what they say. New files take the name `Untitled`, except templates named in capitals, like `README.md`, and dotfiles, like `.gitignore`, which keep their name.
+In text templates, `{{name}}` becomes the new file’s name without its extension, `{{filename}}` its full name, `{{folder}}` the folder’s name, and `{{date}}`, `{{time}}`, `{{year}}` and `{{user}}` what they say. Values are escaped in HTML, XML, SVG and JSON files, so any name keeps the file valid. New files take the name `Untitled`, except templates named in capitals, like `README.md`, and dotfiles, like `.gitignore`, which keep their name.
 
 Configure a Hotkey to show the templates, and set where files go, the default folder, the templates folder and the editor in the Workflow’s Configuration.
 

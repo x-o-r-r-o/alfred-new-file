@@ -117,7 +117,8 @@
     {
       "id": "add_template",
       "type": "script",
-      "script": "osascript -l JavaScript ./newfile.js add-template \"$1\""
+      "script": "osascript -l JavaScript ./newfile.js add-template \"$@\"",
+      "note": "Alfred may pass several files as one tab-separated argument or as separate arguments"
     },
     {
       "id": "notify",

@@ -135,7 +135,7 @@
 				<key>alfredfiltersresultsmatchmode</key>
 				<integer>0</integer>
 				<key>argumenttreatemptyqueryasnil</key>
-				<false/>
+				<true/>
 				<key>argumenttrimmode</key>
 				<integer>0</integer>
 				<key>argumenttype</key>
@@ -280,7 +280,7 @@
 				<key>escaping</key>
 				<integer>102</integer>
 				<key>script</key>
-				<string>osascript -l JavaScript ./newfile.js add-template "$1"</string>
+				<string>osascript -l JavaScript ./newfile.js add-template "$@"</string>
 				<key>scriptargtype</key>
 				<integer>1</integer>
 				<key>scriptfile</key>
@@ -340,7 +340,7 @@ Open the templates folder from the list shown by the empty `new` keyword. Any fi
 
 Add a selected file as a template via the Universal Action “Add as New File Template”. Save a blank Pages, Numbers, Keynote or Excel document and add it this way to create those too.
 
-In text templates, `{{name}}` becomes the new file’s name without its extension, `{{filename}}` its full name, `{{folder}}` the folder’s name, and `{{date}}`, `{{time}}`, `{{year}}` and `{{user}}` what they say. New files take the name `Untitled`, except templates named in capitals, like `README.md`, and dotfiles, like `.gitignore`, which keep their name.
+In text templates, `{{name}}` becomes the new file’s name without its extension, `{{filename}}` its full name, `{{folder}}` the folder’s name, and `{{date}}`, `{{time}}`, `{{year}}` and `{{user}}` what they say. Values are escaped in HTML, XML, SVG and JSON files, so any name keeps the file valid. New files take the name `Untitled`, except templates named in capitals, like `README.md`, and dotfiles, like `.gitignore`, which keep their name.
 
 Configure a Hotkey to show the templates, and set where files go, the default folder, the templates folder and the editor in the Workflow’s Configuration.
 </string>
@@ -387,6 +387,8 @@ Configure a Hotkey to show the templates, and set where files go, the default fo
 		</dict>
 		<key>F5456FD0-DFBB-5DF8-BFF5-113369EBCA1A</key>
 		<dict>
+			<key>note</key>
+			<string>Alfred may pass several files as one tab-separated argument or as separate arguments</string>
 			<key>xpos</key>
 			<integer>250</integer>
 			<key>ypos</key>
