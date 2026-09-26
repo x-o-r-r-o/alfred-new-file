@@ -586,6 +586,78 @@ class TemplateActionTests(unittest.TestCase):
         self.assertEqual(os.path.getsize(os.path.join(e.target, "gone.md")), 0)
 
 
+class Audit1Tests(unittest.TestCase):
+    """Regressions for bugs found in the first audit."""
+
+    def test_dotted_folder_names_are_numbered_whole(self):
+        e = Env()
+        os.mkdir(os.path.join(e.target, "v1.2"))
+        it = e.sf("folder v1.2")[0]
+        self.assertEqual(it["arg"], os.path.join(e.target, "v1.2 2"))
+        e.run_item(it)
+        self.assertTrue(os.path.isdir(os.path.join(e.target, "v1.2 2")))
+
+    def test_only_real_extensions_count(self):
+        e = Env()
+        t = titles(e.sf("Version 1.0 notes"))
+        self.assertIn("Version 1.0 notes.md", t)
+        self.assertIn("New folder “Version 1.0 notes”", t)
+        write(os.path.join(e.target, "Version 1.0 notes"), "")
+        e.run_item(find(e.sf("Version 1.0 notes"), "Version 1.0 notes"))
+        self.assertIn("Version 1.0 notes 2", e.files())
+        self.assertIn("Markdown template", e.sf("résumé.md")[0]["subtitle"])
+
+    def test_broken_symlink_template_is_skipped(self):
+        e = Env()
+        e.sf("")
+        os.symlink(os.path.join(e.data, "gone.md"), os.path.join(e.templates, "Broken.md"))
+        self.assertNotIn("Broken", titles(e.sf("")))
+        self.assertNotIn("Broken template", " ".join(i.get("subtitle", "") for i in e.sf("x.md")))
+
+    def test_markup_placeholders_are_escaped(self):
+        e = Env()
+        e.run_item(e.sf('a <b> & "c".html')[0])
+        html = read(os.path.join(e.target, 'a <b> & "c".html'))
+        self.assertIn("<title>a &lt;b&gt; &amp; &quot;c&quot;</title>", html)
+        e.run_item(e.sf("x <y>.md")[0])
+        self.assertEqual(read(os.path.join(e.target, "x <y>.md")), "# x <y>\n\n")
+
+    def test_large_text_template_sniffed_quickly(self):
+        e = Env()
+        e.sf("")
+        write(os.path.join(e.templates, "Big.log"), "line\n" * 400000)
+        it = e.sf("x.log")[0]
+        self.assertTrue(it["mods"]["ctrl"]["valid"])
+        write(os.path.join(e.templates, "Late.bin"), b"a" * 9000 + b"\0")  # NUL after the sniffed prefix
+        self.assertTrue(e.sf("x.bin")[0]["mods"]["ctrl"]["valid"])
+
+    def test_path_mode_folder_autocomplete(self):
+        e = Env()
+        dest = tmpdir("dest")
+        it = e.sf(dest + "/folder New")[0]
+        self.assertEqual(it["autocomplete"], dest + "/folder New")
+        self.assertEqual(e.sf(dest + "/folder New")[0]["variables"]["nf_kind"], "folder")
+        it = e.sf(dest + "/folder a:b")[0]
+        self.assertEqual(it["autocomplete"], dest + "/folder a-b")
+
+    def test_add_symlink_copies_the_file(self):
+        e = Env()
+        src = tmpdir("src")
+        real = os.path.join(src, "Real.md")
+        write(real, "# real")
+        link = os.path.join(src, "Link.md")
+        os.symlink(real, link)
+        e.add(link)
+        added = os.path.join(e.templates, "Real.md")
+        self.assertTrue(os.path.isfile(added) and not os.path.islink(added))
+
+    def test_finder_query_has_a_timeout(self):
+        with open(os.path.join(SRC, "newfile.js")) as f:
+            js = f.read()
+        self.assertIn("with timeout of 3 seconds", js)
+        self.assertNotIn("Application(", js)  # no untimed Apple Events
+
+
 class PlistTests(unittest.TestCase):
     def test_build_and_plist(self):
         subprocess.run([sys.executable, "tools/build.py"], cwd=ROOT, check=True, capture_output=True)

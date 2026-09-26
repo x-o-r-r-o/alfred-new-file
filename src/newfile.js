@@ -24,7 +24,7 @@ const TEST = env("NF_TEST", "") === "1"; // test suite: never touch Finder or op
 const TEXTUTIL = ["rtf", "docx", "doc", "odt"];
 const SCRIPT_EXTS = ["sh", "bash", "zsh", "fish", "py", "rb", "pl", "php", "js", "mjs", "command", "tool", "swift", "lua", "tcl"];
 const PREFERRED = ["txt", "md", "html", "css", "js", "json", "py", "sh", "csv", "rtf", "docx"];
-const JUNK = new Set([".DS_Store", ".localized", "Icon\r", ".seeded"]);
+const JUNK = new Set([".DS_Store", ".localized", "Icon\r"]);
 
 // ---------- paths and files ----------
 
@@ -59,6 +59,10 @@ function standardize(p) {
     else out.push(part);
   }
   return "/" + out.join("/");
+}
+// Symlinks resolved (note: NSString also maps /private/var to /var, so only compare resolved paths)
+function resolved(p) {
+  return $(p).stringByResolvingSymlinksInPath.js;
 }
 function isDir(p) {
   const r = Ref();
@@ -118,6 +122,22 @@ function capture(path, args) {
   return task.terminationStatus === 0 ? out : null;
 }
 
+function captureAll(path, args) {
+  const task = $.NSTask.alloc.init;
+  task.executableURL = $.NSURL.fileURLWithPath(path);
+  task.arguments = args;
+  const outP = $.NSPipe.pipe, errP = $.NSPipe.pipe;
+  task.standardInput = $.NSFileHandle.fileHandleWithNullDevice;
+  task.standardOutput = outP;
+  task.standardError = errP;
+  if (!task.launchAndReturnError(null)) return null;
+  const out = outP.fileHandleForReading.readDataToEndOfFile;
+  const err = errP.fileHandleForReading.readDataToEndOfFile;
+  task.waitUntilExit;
+  const str = (d) => { const x = $.NSString.alloc.initWithDataEncoding(d, UTF8); return x.isNil() ? "" : x.js; };
+  return { status: task.terminationStatus, out: str(out), err: str(err) };
+}
+
 function exec(path, args) {
   const task = $.NSTask.alloc.init;
   task.executableURL = $.NSURL.fileURLWithPath(path);
@@ -141,10 +161,14 @@ function convertText(text, ext) {
 
 // ---------- names ----------
 
+// "report.md" -> md. Only a short run of letters, digits, "_", "+" or "-" counts as an
+// extension, so "Version 1.0 notes" and "v1.2 final" have none.
 function splitName(name) {
   const i = name.lastIndexOf(".");
   if (i <= 0 || i === name.length - 1) return { base: name, ext: "" };
-  return { base: name.slice(0, i), ext: name.slice(i + 1) };
+  const ext = name.slice(i + 1);
+  if (!/^[\p{L}\p{N}_+-]{1,16}$/u.test(ext)) return { base: name, ext: "" };
+  return { base: name.slice(0, i), ext };
 }
 
 function nameError(name) {
@@ -166,8 +190,8 @@ function sanitize(name) {
 }
 
 // "report.md" -> "report 2.md" -> "report 3.md"; "report 2.md" continues at 3
-function numbered(name, n) {
-  const { base, ext } = splitName(name);
+function numbered(name, n, folder) {
+  const { base, ext } = folder ? { base: name, ext: "" } : splitName(name);
   const m = base.match(/^(.*\S) (\d{1,6})$/);
   const stem = m ? m[1] : base;
   const start = m ? Number(m[2]) : 1;
@@ -175,14 +199,14 @@ function numbered(name, n) {
   return ext ? `${b}.${ext}` : b;
 }
 
-function candidates(name) {
+function candidates(name, folder) {
   const out = [name];
-  for (let n = 1; n < 1000; n++) out.push(numbered(name, n));
+  for (let n = 1; n < 1000; n++) out.push(numbered(name, n, folder));
   return out;
 }
 
-function uniqueName(dir, name) {
-  for (const c of candidates(name)) if (!exists(join(dir, c))) return c;
+function uniqueName(dir, name, folder) {
+  for (const c of candidates(name, folder)) if (!exists(join(dir, c))) return c;
   return null;
 }
 
@@ -256,7 +280,7 @@ function loadTemplates() {
       if (JUNK.has(n) || n.startsWith("._") || n.startsWith(".seeding-")) continue;
       const p = join(t.path, n);
       if (isDir(p) && !isPackage(p)) continue;
-      if (!exists(p)) continue;
+      if (!FM.fileExistsAtPath(p)) continue; // broken symlink
       const { base, ext } = splitName(n);
       list.push({ file: n, path: p, label: base, ext: ext.toLowerCase(), keepName: keepsName(n) });
     }
@@ -315,8 +339,13 @@ function recordUsage(file) {
 function pad(n) {
   return String(n).padStart(2, "0");
 }
+const MARKUP = ["html", "htm", "xhtml", "xml", "svg", "plist"];
+function escapeMarkup(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
 function fillPlaceholders(text, name, dir) {
   if (!text.includes("{{")) return text;
+  const esc = MARKUP.includes(splitName(name).ext.toLowerCase()) ? escapeMarkup : (x) => x;
   const now = new Date();
   const values = {
     name: splitName(name).base,
@@ -328,7 +357,7 @@ function fillPlaceholders(text, name, dir) {
     user: $.NSFullUserName().js,
   };
   // one pass, so a value that itself contains "{{…}}" is never expanded again
-  return text.replace(/\{\{(name|filename|folder|date|time|year|user)\}\}/g, (_, k) => values[k]);
+  return text.replace(/\{\{(name|filename|folder|date|time|year|user)\}\}/g, (_, k) => esc(values[k]));
 }
 
 // ---------- target folder ----------
@@ -343,30 +372,41 @@ function finderLocation() {
     return { path: fake };
   }
   if (TEST && env("NF_REAL_FINDER", "") !== "1") return { none: true };
-  let finder;
-  try {
-    finder = Application("com.apple.finder");
-    if (!finder.running()) return { none: true };
-    if (finder.finderWindows.length === 0) return { none: true };
-  } catch (e) {
-    return e.errorNumber === -1743 ? { denied: true } : { error: true };
+  const r = captureAll("/usr/bin/osascript", ["-e", FINDER_SCRIPT]);
+  if (!r) return { error: true };
+  const out = r.out.replace(/\n$/, "");
+  if (r.status !== 0) {
+    if (/-1743/.test(r.err)) return { denied: true };
+    if (/-1712/.test(r.err)) return { error: true }; // timed out
+    return { nonfs: true };
   }
-  // Recents, AirDrop, search results, Network…: the front window has no file URL
-  try {
-    const url = finder.finderWindows[0].target().url();
-    if (!url || !String(url).startsWith("file://")) return { nonfs: true };
-  } catch (e) {
-    return e.errorNumber === -1743 ? { denied: true } : { nonfs: true };
-  }
-  try {
-    const url = String(finder.insertionLocation().url());
-    if (!url.startsWith("file://")) return { nonfs: true };
-    const p = $.NSURL.URLWithString(url).path;
-    return p.isNil() ? { nonfs: true } : { path: p.js };
-  } catch (e) {
-    return e.errorNumber === -1743 ? { denied: true } : { nonfs: true };
-  }
+  if (out === "none:") return { none: true };
+  if (out === "denied:") return { denied: true };
+  if (out.startsWith("path:") && out.length > 5) return { path: out.slice(5) };
+  return { nonfs: true };
 }
+
+// Fixed source, no data interpolated. Recents, AirDrop, search results and Network windows
+// have no file URL, so they report "nonfs:".
+const FINDER_SCRIPT = `with timeout of 3 seconds
+  tell application id "com.apple.finder"
+    if not running then return "none:"
+    if (count of Finder windows) is 0 then return "none:"
+    try
+      set u to URL of (target of Finder window 1)
+    on error number n
+      if n is -1743 then return "denied:"
+      return "nonfs:"
+    end try
+    if u does not start with "file://" then return "nonfs:"
+    try
+      return "path:" & POSIX path of (insertion location as alias)
+    on error number n
+      if n is -1743 then return "denied:"
+      return "nonfs:"
+    end try
+  end tell
+end timeout`;
 
 function frontmostIsFinder() {
   const fake = env("NF_TEST_FRONTMOST", null);
@@ -453,14 +493,23 @@ function canUseClipboard(name, template) {
   if (TEXTUTIL.includes(ext)) return true;
   if (!template) return true;
   if (isDir(template)) return false;
-  const d = readData(template);
-  return d !== null && dataToText(d) !== null;
+  return looksLikeText(template);
+}
+
+// Text if the first 8 KB have no NUL byte (cheap enough to run for every row)
+function looksLikeText(path) {
+  const h = $.NSFileHandle.fileHandleForReadingAtPath(path);
+  if (h.isNil()) return false;
+  const d = h.readDataOfLength(8192);
+  h.closeFile;
+  const bytes = $.NSString.alloc.initWithDataEncoding(d, $.NSISOLatin1StringEncoding);
+  return !bytes.isNil() && !bytes.js.includes("\0");
 }
 
 // One creatable row. Everything the run step needs travels in variables.
 function createItem(ctx, o) {
   const name = o.name;
-  const planned = uniqueName(ctx.dir, name) || name;
+  const planned = uniqueName(ctx.dir, name, o.kind === "folder") || name;
   const path = join(ctx.dir, planned);
   const vars = { nf_dir: ctx.dir, nf_name: name, nf_kind: o.kind, nf_template: o.template ? o.template.path : "", nf_template_file: o.template ? o.template.file : "" };
   const v = (action) => Object.assign({}, vars, { nf_action: action });
@@ -471,7 +520,7 @@ function createItem(ctx, o) {
     title: o.title,
     subtitle: clash + (o.subtitle || where(ctx)),
     arg: path,
-    autocomplete: (ctx.prefix || "") + (o.kind === "folder" && !ctx.explicit ? `folder ${name}` : name),
+    autocomplete: (ctx.prefix || "") + (o.kind === "folder" ? `folder ${name}` : name),
     icon: o.icon,
     variables: v("open"),
     text: { copy: path, largetype: path },
@@ -575,7 +624,7 @@ function invalidName(ctx, name, err, folder) {
     title: err,
     subtitle: ok ? `Press ⇥ to use “${fixed}”` : "Type another name",
     valid: false,
-    autocomplete: ok ? (ctx.prefix || "") + (folder && !ctx.explicit ? "folder " : "") + fixed : undefined,
+    autocomplete: ok ? (ctx.prefix || "") + (folder ? "folder " : "") + fixed : undefined,
     icon: icon("error"),
   };
 }
@@ -672,7 +721,7 @@ function createError(dir, name) {
 }
 
 function createFolder(dir, name) {
-  for (const n of candidates(name)) {
+  for (const n of candidates(name, true)) {
     const p = join(dir, n);
     if (exists(p)) continue;
     if (FM.createDirectoryAtPathWithIntermediateDirectoriesAttributesError(p, false, $(), null)) return { path: p };
@@ -738,10 +787,10 @@ function addTemplates(arg) {
   if (!paths.length) return "Select a file first";
   const added = [], problems = [];
   for (const p of paths) {
-    const src = standardize(expand(p));
+    const src = resolved(standardize(expand(p)));
     if (!exists(src)) { problems.push(`${basename(src)} not found`); continue; }
     if (isDir(src) && !isPackage(src)) { problems.push(`${basename(src)} is a folder`); continue; }
-    if (standardize(parent(src)) === standardize(t.path)) { problems.push(`${basename(src)} is already a template`); continue; }
+    if (resolved(parent(src)) === resolved(t.path)) { problems.push(`${basename(src)} is already a template`); continue; }
     let done = null;
     for (const n of candidates(basename(src))) {
       const dest = join(t.path, n);
