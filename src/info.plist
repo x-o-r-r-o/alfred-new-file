@@ -8,6 +8,19 @@
 	<string>Productivity</string>
 	<key>connections</key>
 	<dict>
+		<key>03EE40CF-1EBF-521D-BE37-CE70D3AC9E09</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>E9AD15E6-990B-5620-B980-8B1FCA0E3E39</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
 		<key>2EA8FF8A-9FA1-57A3-A3C8-F4C669AEA1EB</key>
 		<array>
 			<dict>
@@ -39,6 +52,19 @@
 			<dict>
 				<key>destinationuid</key>
 				<string>F9B614E5-07AC-5959-AA72-0B851C1FCE3E</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>B367E47B-8BD9-549D-A71C-00A35363D843</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>03EE40CF-1EBF-521D-BE37-CE70D3AC9E09</string>
 				<key>modifiers</key>
 				<integer>0</integer>
 				<key>modifiersubtext</key>
@@ -110,6 +136,16 @@
 				<string>73D5164A-DD8E-5804-8958-158D6E8B8706</string>
 				<key>modifiers</key>
 				<integer>262144</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+			<dict>
+				<key>destinationuid</key>
+				<string>73D5164A-DD8E-5804-8958-158D6E8B8706</string>
+				<key>modifiers</key>
+				<integer>8388608</integer>
 				<key>modifiersubtext</key>
 				<string></string>
 				<key>vitoclose</key>
@@ -254,6 +290,27 @@
 		<dict>
 			<key>config</key>
 			<dict>
+				<key>acceptsfiles</key>
+				<false/>
+				<key>acceptsmulti</key>
+				<integer>0</integer>
+				<key>acceptstext</key>
+				<true/>
+				<key>acceptsurls</key>
+				<false/>
+				<key>name</key>
+				<string>Save as New File</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.trigger.universalaction</string>
+			<key>uid</key>
+			<string>B367E47B-8BD9-549D-A71C-00A35363D843</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
 				<key>concurrently</key>
 				<false/>
 				<key>escaping</key>
@@ -300,6 +357,29 @@
 		<dict>
 			<key>config</key>
 			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>osascript -l JavaScript ./newfile.js from-text "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>03EE40CF-1EBF-521D-BE37-CE70D3AC9E09</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
 				<key>lastpathcomponent</key>
 				<false/>
 				<key>onlyshowifquerypopulated</key>
@@ -324,10 +404,11 @@
 
 Create a file in the folder of the front Finder window via the `new` keyword. Type a name with an extension, like `new report.md`, to create it from the matching template. Type a name without one, like `new notes`, to pick from every template type. With no Finder window open, files go to the default folder (the Desktop unless you change it).
 
-* &lt;kbd&gt;↩&lt;/kbd&gt; Create and open in the default app.
-* &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Create and select in Finder, ready to rename.
+* &lt;kbd&gt;↩&lt;/kbd&gt; Create and open in the default app (or select it in Finder, or open it in the editor, as set in the Workflow’s Configuration).
+* &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Create and select in Finder, ready to rename (open it instead when &lt;kbd&gt;↩&lt;/kbd&gt; selects it).
 * &lt;kbd&gt;⌥&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Create and open in the editor set in the Workflow’s Configuration.
 * &lt;kbd&gt;⌃&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Create with the clipboard text as its contents.
+* &lt;kbd&gt;fn&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Create and copy its path.
 * &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;Y&lt;/kbd&gt; Quick Look the template.
 
 Leave the query empty to see every template. Type `new folder Photos` to create a folder. Existing files are never replaced: a clashing name gets a number, like `report 2.md`. Names starting with a dot, like `.env`, create hidden files.
@@ -335,6 +416,8 @@ Leave the query empty to see every template. Type `new folder Photos` to create 
 Start with a path to create somewhere else, like `new ~/Projects/site/index.html`.
 
 Alternatively, create a file in a selected folder via the Universal Action “New File Here”.
+
+Save selected text as `Untitled.txt` in the same folder, selected in Finder and ready to rename, via the Universal Action “Save as New File”.
 
 ### Templates
 
@@ -344,10 +427,19 @@ Add a selected file as a template via the Universal Action “Add as New File Te
 
 In text templates, `{{name}}` becomes the new file’s name without its extension, `{{filename}}` its full name, `{{folder}}` the folder’s name, and `{{date}}`, `{{time}}`, `{{year}}` and `{{user}}` what they say. Values are escaped in HTML, XML, SVG and JSON files, so any name keeps the file valid. New files take the name `Untitled`, except templates named in capitals, like `README.md`, and dotfiles, like `.gitignore`, which keep their name.
 
-Configure a Hotkey to show the templates, and set where files go, the default folder, the templates folder and the editor in the Workflow’s Configuration.
+Configure a Hotkey to show the templates, and set where files go, what &lt;kbd&gt;↩&lt;/kbd&gt; does, the default folder, the templates folder and the editor in the Workflow’s Configuration.
 </string>
 	<key>uidata</key>
 	<dict>
+		<key>03EE40CF-1EBF-521D-BE37-CE70D3AC9E09</key>
+		<dict>
+			<key>note</key>
+			<string>Saves the selected text as Untitled.txt in the target folder</string>
+			<key>xpos</key>
+			<integer>250</integer>
+			<key>ypos</key>
+			<integer>280</integer>
+		</dict>
 		<key>2EA8FF8A-9FA1-57A3-A3C8-F4C669AEA1EB</key>
 		<dict>
 			<key>xpos</key>
@@ -372,6 +464,13 @@ Configure a Hotkey to show the templates, and set where files go, the default fo
 			<integer>30</integer>
 			<key>ypos</key>
 			<integer>20</integer>
+		</dict>
+		<key>B367E47B-8BD9-549D-A71C-00A35363D843</key>
+		<dict>
+			<key>xpos</key>
+			<integer>30</integer>
+			<key>ypos</key>
+			<integer>410</integer>
 		</dict>
 		<key>B452030D-B141-5058-9FE4-65D8395E93AC</key>
 		<dict>
@@ -456,6 +555,36 @@ Configure a Hotkey to show the templates, and set where files go, the default fo
 			<string>popupbutton</string>
 			<key>variable</key>
 			<string>location</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>open</string>
+				<key>pairs</key>
+				<array>
+					<array>
+						<string>Open in the default app</string>
+						<string>open</string>
+					</array>
+					<array>
+						<string>Select in Finder, ready to rename</string>
+						<string>reveal</string>
+					</array>
+					<array>
+						<string>Open in the editor</string>
+						<string>editor</string>
+					</array>
+				</array>
+			</dict>
+			<key>description</key>
+			<string>What ↩ does after creating; ⌘↩ opens or selects the file instead</string>
+			<key>label</key>
+			<string>↩ action</string>
+			<key>type</key>
+			<string>popupbutton</string>
+			<key>variable</key>
+			<string>return_action</string>
 		</dict>
 		<dict>
 			<key>config</key>

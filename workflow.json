@@ -44,6 +44,29 @@
       }
     },
     {
+      "type": "popupbutton",
+      "variable": "return_action",
+      "label": "↩ action",
+      "description": "What ↩ does after creating; ⌘↩ opens or selects the file instead",
+      "config": {
+        "default": "open",
+        "pairs": [
+          [
+            "Open in the default app",
+            "open"
+          ],
+          [
+            "Select in Finder, ready to rename",
+            "reveal"
+          ],
+          [
+            "Open in the editor",
+            "editor"
+          ]
+        ]
+      }
+    },
+    {
       "type": "filepicker",
       "variable": "default_folder",
       "label": "Default folder",
@@ -109,6 +132,13 @@
       "multi": 1
     },
     {
+      "id": "ua_text",
+      "type": "universalaction",
+      "name": "Save as New File",
+      "text": true,
+      "multi": 0
+    },
+    {
       "id": "create",
       "type": "script",
       "script": "osascript -l JavaScript ./newfile.js run \"$1\"",
@@ -119,6 +149,12 @@
       "type": "script",
       "script": "osascript -l JavaScript ./newfile.js add-template \"$@\"",
       "note": "Alfred may pass several files as one tab-separated argument or as separate arguments"
+    },
+    {
+      "id": "from_text",
+      "type": "script",
+      "script": "osascript -l JavaScript ./newfile.js from-text \"$1\"",
+      "note": "Saves the selected text as Untitled.txt in the target folder"
     },
     {
       "id": "notify",
@@ -154,6 +190,11 @@
       "mod": "ctrl"
     },
     {
+      "from": "sf_new",
+      "to": "create",
+      "mod": "fn"
+    },
+    {
       "from": "create",
       "to": "notify"
     },
@@ -163,6 +204,14 @@
     },
     {
       "from": "add_template",
+      "to": "notify"
+    },
+    {
+      "from": "ua_text",
+      "to": "from_text"
+    },
+    {
+      "from": "from_text",
       "to": "notify"
     }
   ]

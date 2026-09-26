@@ -553,6 +553,8 @@ class TemplateActionTests(unittest.TestCase):
         self.assertIn("Added", out)
         self.assertTrue(os.path.exists(os.path.join(e.templates, 'Invoice "2026".numbers')))
         self.assertIn("Plain text.txt", os.listdir(e.templates))  # seeded first
+        self.assertIn("Memo.md is already a template", e.add(b))  # identical copy: not added twice
+        write(b, "# memo v2")
         out = e.add(b)
         self.assertIn("Memo 2.md", out)
         self.assertEqual(read(os.path.join(e.templates, "Memo.md")), "# memo")
@@ -855,6 +857,65 @@ class Audit4Tests(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(e.templates, "Two.txt")))
 
 
+class Round4Tests(unittest.TestCase):
+    """Alfred-runtime findings and v1.0.1 improvements."""
+
+    def raw(self, e, cmd, *args, **extra):
+        out = subprocess.run(["osascript", "-l", "JavaScript", "./newfile.js", cmd, *args], cwd=SRC,
+                             env=e.base(**extra), capture_output=True, text=True, timeout=30)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return out.stdout
+
+    def test_success_prints_nothing_for_the_notification(self):
+        # "only show if populated" must not see a lone newline after a successful create
+        e = Env()
+        it = e.sf("quiet.txt")[0]
+        self.assertEqual(self.raw(e, "run", it["arg"], **it["variables"], NF_TEST_SILENT="1"), "")
+        self.assertTrue(os.path.exists(os.path.join(e.target, "quiet.txt")))
+        self.assertEqual(self.raw(e, "from-text", "hi", NF_TEST_SILENT="1"), "")
+        # errors still produce text
+        self.assertIn("doesn’t exist", self.raw(e, "run", "x", nf_dir=os.path.join(e.target, "gone"), nf_name="a.txt"))
+
+    def test_return_action_setting(self):
+        e = Env()
+        it = e.sf("r.md", return_action="reveal")[0]
+        self.assertEqual(it["variables"]["nf_action"], "reveal")
+        self.assertEqual(it["mods"]["cmd"]["variables"]["nf_action"], "open")
+        self.assertIn("default app", it["mods"]["cmd"]["subtitle"])
+        self.assertEqual(e.run_item(it), f"REVEAL {os.path.join(e.target, 'r.md')}")
+        it = e.sf("s.md", return_action="editor")[0]
+        self.assertEqual(it["variables"]["nf_action"], "editor")
+        self.assertEqual(it["mods"]["cmd"]["variables"]["nf_action"], "reveal")
+        # unknown or padded values fall back sensibly
+        self.assertEqual(e.sf("t.md", return_action="bogus")[0]["variables"]["nf_action"], "open")
+        self.assertEqual(e.sf("t.md", return_action=" reveal ")[0]["variables"]["nf_action"], "reveal")
+        self.assertEqual(e.sf("t.md", return_action="")[0]["variables"]["nf_action"], "open")
+
+    def test_fn_copies_the_path(self):
+        e = Env()
+        it = e.sf("path me.txt")[0]
+        self.assertIn("copy its path", it["mods"]["fn"]["subtitle"])
+        p = os.path.join(e.target, "path me.txt")
+        self.assertEqual(e.run_item(it, "fn"), f"COPYPATH {p}")
+        self.assertTrue(os.path.exists(p))
+        self.assertIs(find(e.sf(""), "Open Templates Folder")["mods"]["fn"]["valid"], False)
+
+    def test_save_text_as_new_file(self):
+        e = Env()
+        text = 'Line "one"\n$(rm -rf /) `x` café 🎉\n'
+        out = self.raw(e, "from-text", text).strip()
+        p = os.path.join(e.target, "Untitled.txt")
+        self.assertEqual(out, f"REVEAL {p}")
+        self.assertEqual(read(p), text)
+        self.assertEqual(self.raw(e, "from-text", "again").strip(), f"REVEAL {os.path.join(e.target, 'Untitled 2.txt')}")
+        self.assertEqual(self.raw(e, "from-text", "  \n ").strip(), "Select some text first")
+        self.assertEqual(self.raw(e, "from-text").strip(), "Select some text first")
+        # falls back to the default folder like the keyword does
+        dflt = tmpdir("dflt")
+        self.raw(e, "from-text", "x", NF_TEST_FINDER="none", default_folder=dflt)
+        self.assertEqual(os.listdir(dflt), ["Untitled.txt"])
+
+
 class FinalReviewTests(unittest.TestCase):
     """Regressions for issues found in the final release review."""
 
@@ -916,7 +977,12 @@ class PlistTests(unittest.TestCase):
         out = subprocess.run(["sips", "-g", "pixelWidth", os.path.join(SRC, "icon.png")], capture_output=True, text=True).stdout
         self.assertGreaterEqual(int(out.split()[-1]), 256)
         mods = sorted(c["modifiers"] for c in p["connections"][[o["uid"] for o in p["objects"] if o["type"].endswith("scriptfilter")][0]])
-        self.assertEqual(mods, [0, 262144, 524288, 1048576])
+        self.assertEqual(mods, [0, 262144, 524288, 1048576, 8388608])
+        ua = {o["config"]["name"]: o["config"] for o in p["objects"] if o["type"].endswith("universalaction")}
+        self.assertTrue(ua["Save as New File"]["acceptstext"])
+        self.assertFalse(ua["Save as New File"]["acceptsfiles"])
+        cfg = {c["variable"]: c for c in p["userconfigurationconfig"]}
+        self.assertEqual(cfg["return_action"]["config"]["default"], "open")
 
 
 if __name__ == "__main__":

@@ -23,6 +23,23 @@ Raycast demand this workflow replaces (downloads, 2026-09-26):
 - [x] Universal Actions: New File Here (folder or file), Add as New File Template
 - [x] `{{name}}`, `{{folder}}`, `{{date}}`… placeholders; recently used templates first; paths in the query
 
+## Round 4 (post-release audit, for v1.0.1)
+- [x] Successful actions print nothing (osascript printed a lone newline for `""`, which could reach the “only show if populated” notification as an empty message)
+- [x] Adding the same file twice as a template is refused instead of creating “Memo 2.md”
+- [x] Workflow Configuration “↩ action”: open, select in Finder or open in the editor; ⌘↩ then does open/select
+- [x] <kbd>fn</kbd><kbd>↩</kbd> creates and copies the path
+- [x] Universal Action “Save as New File” for selected text (the Raycast extension’s most-used “New File Now” flow)
+- Checked, no change needed: fresh install and data/cache paths with spaces, minimal `env -i` environment (no LANG, no Homebrew), upgrade (`recent.json` format unchanged since 1.0.0), every config variable’s type/default, JavaScript features against Safari 16.0 (no lookbehind, `.at()`, `findLast`…), AppleScript/textutil/UTType APIs available on macOS 13.
+
+## Ideas for v1.1
+1. Ask for a name in “Save as New File” (route the text through a variable to the Script Filter), or name the file from the text’s first line.
+2. Folder templates (project scaffolds): a plain folder in the templates folder copied recursively with placeholders filled.
+3. Placeholders in typed names, like `new {{date}} notes.md`.
+4. Create inside the folder selected in Finder, not only the window’s folder.
+5. External trigger / deep link that creates a given template directly (raycast/extensions#19812).
+6. Grid View (Alfred 5.5) of templates with their icons.
+7. ⌥ on template rows in the empty query to edit the template itself.
+
 ## Tech
 - **Stack:** zsh + JXA (Finder insertion location).
 - **Dependencies:** None.
@@ -49,6 +66,9 @@ Raycast demand this workflow replaces (downloads, 2026-09-26):
 - [ ] Hotkey opens the template list; ⌘Y Quick Looks the template; ⌥↩ opens in the configured editor (name and full path).
 - [ ] Notification appears only for errors and for added templates.
 - [ ] Default and templates folder pickers accept folders and a `~/` default.
+- [ ] No empty notification after a successful create; errors still notify.
+- [ ] <kbd>fn</kbd><kbd>↩</kbd> copies the path; “↩ action” set to “Select in Finder” swaps ⌘↩ to open.
+- [ ] “Save as New File” appears for selected text (not for files) and selects `Untitled.txt` in Finder.
 
 ## Release checklist (Alfred forum + Gallery)
 Sources: alfred.app/submit, alfred.app/submit/styleguide, alfred.app/submit/screenshots, alfredforum.com topics 23976 and 23388.

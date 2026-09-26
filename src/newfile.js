@@ -588,6 +588,9 @@ function createItem(ctx, o) {
   const path = join(ctx.dir, planned);
   const vars = { nf_dir: ctx.dir, nf_name: name, nf_kind: o.kind, nf_template: o.template ? o.template.path : "", nf_template_file: o.template ? o.template.file : "" };
   const v = (action) => Object.assign({}, vars, { nf_action: action });
+  const ret = returnAction();
+  const cmdAction = ret === "reveal" ? "open" : "reveal";
+  const cmdText = cmdAction === "open" ? "Create and open it in the default app" : "Create and select it in Finder";
   const clash = planned !== name ? `“${name}” exists: creates “${planned}” · ` : "";
   const clip = o.kind === "file" && canUseClipboard(name, vars.nf_template);
   const item = {
@@ -597,14 +600,15 @@ function createItem(ctx, o) {
     arg: path,
     autocomplete: (ctx.prefix || "") + (o.kind === "folder" ? `folder ${name}` : name),
     icon: o.icon,
-    variables: v("open"),
+    variables: v(ret),
     text: { copy: path, largetype: path },
     mods: {
-      cmd: { arg: path, valid: true, subtitle: `Create and select it in Finder · ${where(ctx)}`, variables: v("reveal") },
+      cmd: { arg: path, valid: true, subtitle: `${cmdText} · ${where(ctx)}`, variables: v(cmdAction) },
       alt: { arg: path, valid: true, subtitle: `Create and open in ${editorName()}`, variables: v("editor") },
       ctrl: clip
         ? { arg: path, valid: true, subtitle: "Create with the clipboard as its contents", variables: v("clipboard") }
         : { arg: path, valid: false, subtitle: o.kind === "folder" ? "Folders have no contents" : "Only text files can take the clipboard" },
+      fn: { arg: path, valid: true, subtitle: "Create and copy its path", variables: v("copypath") },
     },
   };
   if (o.template) item.quicklookurl = o.template.path;
@@ -612,6 +616,12 @@ function createItem(ctx, o) {
   if (name.startsWith(".")) item.subtitle = `Hidden file (⌘⇧. shows it in Finder) · ${item.subtitle}`;
   delete item.uid;
   return item;
+}
+
+// What ↩ does (Workflow Configuration popup); ⌘↩ then does the other of open/reveal
+function returnAction() {
+  const a = env("return_action", "open").trim();
+  return a === "reveal" || a === "editor" ? a : "open";
 }
 
 function editorName() {
@@ -717,6 +727,7 @@ function openTemplatesItem(dir) {
       cmd: { arg: dir, valid: true, subtitle: "Open the templates folder", variables: { nf_action: "opentemplates", nf_dir: dir } },
       alt: { arg: dir, valid: false, subtitle: "Open the templates folder with ↩" },
       ctrl: { arg: dir, valid: false, subtitle: "Open the templates folder with ↩" },
+      fn: { arg: dir, valid: false, subtitle: "Open the templates folder with ↩" },
     },
   };
 }
@@ -731,8 +742,9 @@ function clipboardText() {
 }
 
 // Contents for a new file (NSData), or { error }
-function contentsFor(name, dir, templatePath, action) {
+function contentsFor(name, dir, templatePath, action, given) {
   const ext = splitName(name).ext.toLowerCase();
+  if (action === "text") return { data: textToData(given) };
   if (action === "clipboard") {
     const text = clipboardText();
     if (text === null) return { error: "The clipboard has no text" };
@@ -756,12 +768,12 @@ function contentsFor(name, dir, templatePath, action) {
 
 // Create without ever overwriting: every write is exclusive, and on a clash the next
 // numbered name is tried, so two runs racing for the same name both succeed.
-function createFile(dir, name, templatePath, action) {
+function createFile(dir, name, templatePath, action, given) {
   guard(dir);
   const isPkg = templatePath && isDir(templatePath);
   let content = null;
   if (!isPkg) {
-    content = contentsFor(name, dir, templatePath, action);
+    content = contentsFor(name, dir, templatePath, action, given);
     if (content.error) return content;
   }
   const precheck = env("NF_TEST_NO_PRECHECK", "") !== "1"; // tests prove the write itself is exclusive
@@ -818,7 +830,13 @@ function createFolder(dir, name) {
 
 // In the test suite, actions are printed instead of performed.
 function perform(action, path) {
-  if (TEST) return `${action.toUpperCase()} ${path}`;
+  if (TEST) return env("NF_TEST_SILENT", "") === "1" ? "" : `${action.toUpperCase()} ${path}`; // SILENT: as a real success
+  if (action === "copypath") {
+    const pb = $.NSPasteboard.generalPasteboard;
+    pb.clearContents;
+    pb.setStringForType($(path), $.NSPasteboardTypeString);
+    return "";
+  }
   const url = $.NSURL.fileURLWithPath(path);
   if (action === "reveal") {
     WS.activateFileViewerSelectingURLs($([url]));
@@ -878,6 +896,8 @@ function addTemplates(arg) {
     if (JUNK.has(basename(src)) || basename(src).startsWith("._")) { problems.push(`${basename(src)} is a system file`); continue; }
     if (isDir(src) && !isPackage(src)) { problems.push(`${basename(src)} is a folder`); continue; }
     if (resolved(parent(src)) === resolved(t.path)) { problems.push(`${basename(src)} is already a template`); continue; }
+    const same = join(t.path, basename(src));
+    if (!isDir(src) && isRegular(same) && FM.contentsEqualAtPathAndPath(src, same)) { problems.push(`${basename(src)} is already a template`); continue; }
     let done = null;
     for (const n of candidates(basename(src))) {
       const dest = join(t.path, n);
@@ -894,7 +914,27 @@ function addTemplates(arg) {
   return msg.join(". ");
 }
 
+// ---------- Universal Action: save selected text as a new file ----------
+
+// Creates "Untitled.txt" with the text in the usual target folder and selects it in Finder,
+// ready to rename.
+function fromText(text) {
+  if (!text || !text.trim()) return "Select some text first";
+  const ctx = resolveTarget();
+  if (!isDir(ctx.dir)) return `Folder not found: ${tilde(ctx.dir)}`;
+  if (!writable(ctx.dir)) return `Can’t create files in “${basename(ctx.dir)}”: it’s read-only`;
+  const r = createFile(ctx.dir, "Untitled.txt", "", "text", text);
+  if (r.error) return r.error;
+  return perform("reveal", r.path);
+}
+
 // ---------- entry ----------
+
+// osascript prints a lone newline for "", which Alfred may treat as a populated notification
+// argument; returning undefined prints nothing at all.
+function quiet(s) {
+  return s ? s : undefined;
+}
 
 function run(argv) {
   const [cmd, ...rest] = argv;
@@ -904,10 +944,13 @@ function run(argv) {
       case "filter":
         return JSON.stringify({ skipknowledge: true, items: filterItems(query).map(display) });
       case "run":
-        return runAction();
+        return quiet(runAction());
       case "add-template":
         // several files arrive either as one tab-separated argument or as separate arguments
-        return addTemplates(rest.join("\t"));
+        return quiet(addTemplates(rest.join("\t")));
+      case "from-text":
+        // Universal Action on text: arrives as one argument (joined back if Alfred ever splits it)
+        return quiet(fromText(rest.join(" ")));
       default:
         return JSON.stringify({ items: [info(`Unknown command: ${cmd}`, "", "error")] });
     }
