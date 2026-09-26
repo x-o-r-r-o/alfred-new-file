@@ -1,0 +1,26 @@
+{
+  "icon": [
+    "doc.badge.plus",
+    "#2563EB"
+  ],
+  "file": [
+    "doc.fill",
+    "#475569"
+  ],
+  "folder": [
+    "folder.fill.badge.plus",
+    "#0EA5E9"
+  ],
+  "templates": [
+    "square.stack.3d.up.fill",
+    "#7C3AED"
+  ],
+  "info": [
+    "info.circle.fill",
+    "#64748B"
+  ],
+  "error": [
+    "exclamationmark.triangle.fill",
+    "#DC2626"
+  ]
+}

@@ -1,0 +1,168 @@
+{
+  "bundleid": "io.github.x-o-r-r-o.new-file",
+  "name": "New File",
+  "description": "Create files from templates in the frontmost Finder folder",
+  "category": "Productivity",
+  "createdby": "x-o-r-r-o",
+  "webaddress": "https://github.com/x-o-r-r-o/alfred-new-file",
+  "version": "1.0.0",
+  "variablesdontexport": [],
+  "config": [
+    {
+      "type": "textfield",
+      "variable": "keyword_new",
+      "label": "Keyword",
+      "description": "Create a file or folder",
+      "config": {
+        "default": "new",
+        "placeholder": "new",
+        "required": true,
+        "trim": true
+      }
+    },
+    {
+      "type": "popupbutton",
+      "variable": "location",
+      "label": "Create in",
+      "description": "Where new files go when you use the keyword",
+      "config": {
+        "default": "finder",
+        "pairs": [
+          [
+            "Front Finder window, else the default folder",
+            "finder"
+          ],
+          [
+            "Front Finder window only when Finder is active",
+            "finder_active"
+          ],
+          [
+            "Always the default folder",
+            "default"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "filepicker",
+      "variable": "default_folder",
+      "label": "Default folder",
+      "description": "Used when no Finder window shows a folder",
+      "config": {
+        "default": "~/Desktop",
+        "filtermode": 1,
+        "placeholder": "~/Desktop",
+        "required": false
+      }
+    },
+    {
+      "type": "filepicker",
+      "variable": "templates_folder",
+      "label": "Templates folder",
+      "description": "Leave empty to use the starter templates in the workflow’s data folder",
+      "config": {
+        "default": "",
+        "filtermode": 1,
+        "placeholder": "Workflow data folder",
+        "required": false
+      }
+    },
+    {
+      "type": "textfield",
+      "variable": "editor_app",
+      "label": "Editor (⌥↩)",
+      "description": "App name or path, like TextEdit, Visual Studio Code or BBEdit",
+      "config": {
+        "default": "TextEdit",
+        "placeholder": "TextEdit",
+        "required": false,
+        "trim": true
+      }
+    }
+  ],
+  "objects": [
+    {
+      "id": "sf_new",
+      "type": "scriptfilter",
+      "keyword": "{var:keyword_new}",
+      "title": "New File",
+      "subtext": "Create a file from a template in the front Finder folder",
+      "script": "osascript -l JavaScript ./newfile.js filter \"$1\""
+    },
+    {
+      "id": "hotkey",
+      "type": "hotkey",
+      "note": "Optional: set a hotkey to show the templates"
+    },
+    {
+      "id": "ua_here",
+      "type": "universalaction",
+      "name": "New File Here",
+      "files": true,
+      "multi": 0
+    },
+    {
+      "id": "ua_template",
+      "type": "universalaction",
+      "name": "Add as New File Template",
+      "files": true,
+      "multi": 1
+    },
+    {
+      "id": "create",
+      "type": "script",
+      "script": "osascript -l JavaScript ./newfile.js run \"$1\"",
+      "note": "Creates the file described by the nf_* variables"
+    },
+    {
+      "id": "add_template",
+      "type": "script",
+      "script": "osascript -l JavaScript ./newfile.js add-template \"$1\""
+    },
+    {
+      "id": "notify",
+      "type": "notification"
+    }
+  ],
+  "connections": [
+    {
+      "from": "hotkey",
+      "to": "sf_new"
+    },
+    {
+      "from": "ua_here",
+      "to": "sf_new"
+    },
+    {
+      "from": "sf_new",
+      "to": "create"
+    },
+    {
+      "from": "sf_new",
+      "to": "create",
+      "mod": "cmd"
+    },
+    {
+      "from": "sf_new",
+      "to": "create",
+      "mod": "alt"
+    },
+    {
+      "from": "sf_new",
+      "to": "create",
+      "mod": "ctrl"
+    },
+    {
+      "from": "create",
+      "to": "notify"
+    },
+    {
+      "from": "ua_template",
+      "to": "add_template"
+    },
+    {
+      "from": "add_template",
+      "to": "notify"
+    }
+  ]
+}

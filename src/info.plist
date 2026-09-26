@@ -7,46 +7,399 @@
 	<key>category</key>
 	<string>Productivity</string>
 	<key>connections</key>
-	<dict/>
+	<dict>
+		<key>2EA8FF8A-9FA1-57A3-A3C8-F4C669AEA1EB</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>F9B614E5-07AC-5959-AA72-0B851C1FCE3E</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>73D5164A-DD8E-5804-8958-158D6E8B8706</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>E9AD15E6-990B-5620-B980-8B1FCA0E3E39</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>B06E97E7-390A-5C13-8F6F-90FA205ABAEB</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>F9B614E5-07AC-5959-AA72-0B851C1FCE3E</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>B452030D-B141-5058-9FE4-65D8395E93AC</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>F5456FD0-DFBB-5DF8-BFF5-113369EBCA1A</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>F5456FD0-DFBB-5DF8-BFF5-113369EBCA1A</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>E9AD15E6-990B-5620-B980-8B1FCA0E3E39</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>F9B614E5-07AC-5959-AA72-0B851C1FCE3E</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>73D5164A-DD8E-5804-8958-158D6E8B8706</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+			<dict>
+				<key>destinationuid</key>
+				<string>73D5164A-DD8E-5804-8958-158D6E8B8706</string>
+				<key>modifiers</key>
+				<integer>1048576</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+			<dict>
+				<key>destinationuid</key>
+				<string>73D5164A-DD8E-5804-8958-158D6E8B8706</string>
+				<key>modifiers</key>
+				<integer>524288</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+			<dict>
+				<key>destinationuid</key>
+				<string>73D5164A-DD8E-5804-8958-158D6E8B8706</string>
+				<key>modifiers</key>
+				<integer>262144</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+	</dict>
 	<key>createdby</key>
 	<string>x-o-r-r-o</string>
 	<key>description</key>
-	<string>Create a new file (from templates) in the frontmost Finder folder.</string>
+	<string>Create files from templates in the frontmost Finder folder</string>
+	<key>disabled</key>
+	<false/>
 	<key>name</key>
 	<string>New File</string>
 	<key>objects</key>
-	<array/>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>{var:keyword_new}</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>…</string>
+				<key>script</key>
+				<string>osascript -l JavaScript ./newfile.js filter "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>skipuniversalaction</key>
+				<true/>
+				<key>subtext</key>
+				<string>Create a file from a template in the front Finder folder</string>
+				<key>title</key>
+				<string>New File</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>F9B614E5-07AC-5959-AA72-0B851C1FCE3E</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>action</key>
+				<integer>0</integer>
+				<key>argument</key>
+				<integer>0</integer>
+				<key>focusedappvariable</key>
+				<false/>
+				<key>focusedappvariablename</key>
+				<string></string>
+				<key>hotkey</key>
+				<integer>0</integer>
+				<key>hotmod</key>
+				<integer>0</integer>
+				<key>leftcursor</key>
+				<false/>
+				<key>modsmode</key>
+				<integer>0</integer>
+				<key>relatedAppsMode</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.trigger.hotkey</string>
+			<key>uid</key>
+			<string>B06E97E7-390A-5C13-8F6F-90FA205ABAEB</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>acceptsfiles</key>
+				<true/>
+				<key>acceptsmulti</key>
+				<integer>0</integer>
+				<key>acceptstext</key>
+				<false/>
+				<key>acceptsurls</key>
+				<false/>
+				<key>name</key>
+				<string>New File Here</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.trigger.universalaction</string>
+			<key>uid</key>
+			<string>2EA8FF8A-9FA1-57A3-A3C8-F4C669AEA1EB</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>acceptsfiles</key>
+				<true/>
+				<key>acceptsmulti</key>
+				<integer>1</integer>
+				<key>acceptstext</key>
+				<false/>
+				<key>acceptsurls</key>
+				<false/>
+				<key>name</key>
+				<string>Add as New File Template</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.trigger.universalaction</string>
+			<key>uid</key>
+			<string>B452030D-B141-5058-9FE4-65D8395E93AC</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>osascript -l JavaScript ./newfile.js run "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>73D5164A-DD8E-5804-8958-158D6E8B8706</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>osascript -l JavaScript ./newfile.js add-template "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>F5456FD0-DFBB-5DF8-BFF5-113369EBCA1A</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>lastpathcomponent</key>
+				<false/>
+				<key>onlyshowifquerypopulated</key>
+				<true/>
+				<key>removeextension</key>
+				<false/>
+				<key>text</key>
+				<string>{query}</string>
+				<key>title</key>
+				<string>{var:alfred_workflow_name}</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.output.notification</string>
+			<key>uid</key>
+			<string>E9AD15E6-990B-5620-B980-8B1FCA0E3E39</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+	</array>
 	<key>readme</key>
-	<string># New File
+	<string>## Usage
 
-Create a new file (from templates) in the frontmost Finder folder.
+Create a file in the folder of the front Finder window via the `new` keyword. Type a name with an extension, like `new report.md`, to create it from the matching template. Type a name without one, like `new notes`, to pick from every template type. With no Finder window open, files go to the default folder (the Desktop unless you change it).
 
-&gt; **Status:** planned — not yet functional. See [PLAN.md](PLAN.md).
+* &lt;kbd&gt;↩&lt;/kbd&gt; Create and open in the default app.
+* &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Create and select in Finder, ready to rename.
+* &lt;kbd&gt;⌥&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Create and open in the editor set in the Workflow’s Configuration.
+* &lt;kbd&gt;⌃&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Create with the clipboard text as its contents.
+* &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;Y&lt;/kbd&gt; Quick Look the template.
 
-## Usage
+Leave the query empty to see every template. Type `new folder Photos` to create a folder. Existing files are never replaced: a clashing name gets a number, like `report 2.md`. Names starting with a dot, like `.env`, create hidden files.
 
-Create a new file (from templates) in the frontmost Finder folder via the `new` keyword.
+Start with a path to create somewhere else, like `new ~/Projects/site/index.html`.
 
-![New File results in Alfred](images/new.png)
+Alternatively, create a file in a selected folder via the Universal Action “New File Here”.
 
-* &lt;kbd&gt;↩&lt;/kbd&gt; Primary action.
-* &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Secondary action.
-* &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;Y&lt;/kbd&gt; Quick Look.
+### Templates
 
-Every keyword can be changed in the Workflow’s Configuration.
+Open the templates folder from the list shown by the empty `new` keyword. Any file you put there becomes a template, and its name (without the extension) is its label. The starters are plain text, Markdown, README, HTML, CSS, JavaScript, JSON, Python and shell scripts (created executable), CSV, rich text, Word and .gitignore.
 
-## Development
+Add a selected file as a template via the Universal Action “Add as New File Template”. Save a blank Pages, Numbers, Keynote or Excel document and add it this way to create those too.
 
-```bash
-./build.sh   # -&gt; dist/alfred-new-file-&lt;version&gt;.alfredworkflow
-```
+In text templates, `{{name}}` becomes the new file’s name without its extension, `{{filename}}` its full name, `{{folder}}` the folder’s name, and `{{date}}`, `{{time}}`, `{{year}}` and `{{user}}` what they say. New files take the name `Untitled`, except templates named in capitals, like `README.md`, and dotfiles, like `.gitignore`, which keep their name.
 
-## AI disclosure
-
-This workflow is developed with the help of Claude (Anthropic), an AI assistant. All code is reviewed and tested by the author.
+Configure a Hotkey to show the templates, and set where files go, the default folder, the templates folder and the editor in the Workflow’s Configuration.
 </string>
 	<key>uidata</key>
-	<dict/>
+	<dict>
+		<key>2EA8FF8A-9FA1-57A3-A3C8-F4C669AEA1EB</key>
+		<dict>
+			<key>xpos</key>
+			<integer>30</integer>
+			<key>ypos</key>
+			<integer>150</integer>
+		</dict>
+		<key>73D5164A-DD8E-5804-8958-158D6E8B8706</key>
+		<dict>
+			<key>note</key>
+			<string>Creates the file described by the nf_* variables</string>
+			<key>xpos</key>
+			<integer>470</integer>
+			<key>ypos</key>
+			<integer>20</integer>
+		</dict>
+		<key>B06E97E7-390A-5C13-8F6F-90FA205ABAEB</key>
+		<dict>
+			<key>note</key>
+			<string>Optional: set a hotkey to show the templates</string>
+			<key>xpos</key>
+			<integer>30</integer>
+			<key>ypos</key>
+			<integer>20</integer>
+		</dict>
+		<key>B452030D-B141-5058-9FE4-65D8395E93AC</key>
+		<dict>
+			<key>xpos</key>
+			<integer>30</integer>
+			<key>ypos</key>
+			<integer>280</integer>
+		</dict>
+		<key>E9AD15E6-990B-5620-B980-8B1FCA0E3E39</key>
+		<dict>
+			<key>xpos</key>
+			<integer>690</integer>
+			<key>ypos</key>
+			<integer>20</integer>
+		</dict>
+		<key>F5456FD0-DFBB-5DF8-BFF5-113369EBCA1A</key>
+		<dict>
+			<key>xpos</key>
+			<integer>250</integer>
+			<key>ypos</key>
+			<integer>150</integer>
+		</dict>
+		<key>F9B614E5-07AC-5959-AA72-0B851C1FCE3E</key>
+		<dict>
+			<key>xpos</key>
+			<integer>250</integer>
+			<key>ypos</key>
+			<integer>20</integer>
+		</dict>
+	</dict>
 	<key>userconfigurationconfig</key>
 	<array>
 		<dict>
@@ -62,17 +415,114 @@ This workflow is developed with the help of Claude (Anthropic), an AI assistant.
 				<true/>
 			</dict>
 			<key>description</key>
-			<string></string>
+			<string>Create a file or folder</string>
 			<key>label</key>
-			<string>New keyword</string>
+			<string>Keyword</string>
 			<key>type</key>
 			<string>textfield</string>
 			<key>variable</key>
 			<string>keyword_new</string>
 		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>finder</string>
+				<key>pairs</key>
+				<array>
+					<array>
+						<string>Front Finder window, else the default folder</string>
+						<string>finder</string>
+					</array>
+					<array>
+						<string>Front Finder window only when Finder is active</string>
+						<string>finder_active</string>
+					</array>
+					<array>
+						<string>Always the default folder</string>
+						<string>default</string>
+					</array>
+				</array>
+			</dict>
+			<key>description</key>
+			<string>Where new files go when you use the keyword</string>
+			<key>label</key>
+			<string>Create in</string>
+			<key>type</key>
+			<string>popupbutton</string>
+			<key>variable</key>
+			<string>location</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>~/Desktop</string>
+				<key>filtermode</key>
+				<integer>1</integer>
+				<key>placeholder</key>
+				<string>~/Desktop</string>
+				<key>required</key>
+				<false/>
+			</dict>
+			<key>description</key>
+			<string>Used when no Finder window shows a folder</string>
+			<key>label</key>
+			<string>Default folder</string>
+			<key>type</key>
+			<string>filepicker</string>
+			<key>variable</key>
+			<string>default_folder</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string></string>
+				<key>filtermode</key>
+				<integer>1</integer>
+				<key>placeholder</key>
+				<string>Workflow data folder</string>
+				<key>required</key>
+				<false/>
+			</dict>
+			<key>description</key>
+			<string>Leave empty to use the starter templates in the workflow’s data folder</string>
+			<key>label</key>
+			<string>Templates folder</string>
+			<key>type</key>
+			<string>filepicker</string>
+			<key>variable</key>
+			<string>templates_folder</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>TextEdit</string>
+				<key>placeholder</key>
+				<string>TextEdit</string>
+				<key>required</key>
+				<false/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string>App name or path, like TextEdit, Visual Studio Code or BBEdit</string>
+			<key>label</key>
+			<string>Editor (⌥↩)</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>editor_app</string>
+		</dict>
 	</array>
+	<key>variables</key>
+	<dict/>
+	<key>variablesdontexport</key>
+	<array/>
 	<key>version</key>
-	<string>0.1.0</string>
+	<string>1.0.0</string>
 	<key>webaddress</key>
 	<string>https://github.com/x-o-r-r-o/alfred-new-file</string>
 </dict>
