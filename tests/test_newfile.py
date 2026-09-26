@@ -855,6 +855,43 @@ class Audit4Tests(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(e.templates, "Two.txt")))
 
 
+class FinalReviewTests(unittest.TestCase):
+    """Regressions for issues found in the final release review."""
+
+    def test_bidi_overrides_rejected_in_names_and_stripped_from_titles(self):
+        e = Env()
+        it = e.sf("invoice‮txt.exe")[0]
+        self.assertFalse(it["valid"])
+        self.assertIn("text-direction", it["title"])
+        self.assertEqual(it["autocomplete"], "invoicetxt.exe")
+        self.assertFalse(e.sf("a\u0085b.txt")[0]["valid"])  # C1 control (NEL)
+        e.sf("")
+        write(os.path.join(e.templates, "Evil‮gpj.txt"), "x")
+        for i in e.sf(""):
+            for s in [i["title"], i.get("subtitle", "")] + [m["subtitle"] for m in (i.get("mods") or {}).values()]:
+                self.assertNotRegex(s, "[‪-‮⁦-⁩\u0000-\u001f]", i)
+        self.assertIn("Evilgpj", titles(e.sf("")))
+        e.sf("x⁦y")  # no crash
+
+    def test_test_mode_never_writes_outside_temp(self):
+        e = Env()
+        home = os.path.expanduser("~")
+        out = e.run("x", nf_action="open", nf_dir=home, nf_name="nf-should-not-exist.txt", nf_kind="file")
+        self.assertIn("refusing", out)
+        self.assertFalse(os.path.exists(os.path.join(home, "nf-should-not-exist.txt")))
+        out = e.run("x", nf_action="open", nf_dir=home, nf_name="nf-should-not-exist", nf_kind="folder")
+        self.assertIn("refusing", out)
+        self.assertFalse(os.path.exists(os.path.join(home, "nf-should-not-exist")))
+        self.assertIn("refusing", e.add(os.path.join(e.target), templates_folder=os.path.join(home, "nf-no-templates")))
+        self.assertFalse(os.path.exists(os.path.join(home, "nf-no-templates")))
+
+    def test_folder_row_autocompletes_to_the_folder_command(self):
+        e = Env()
+        self.assertEqual(find(e.sf(""), "Folder")["autocomplete"], "folder ")
+        dest = tmpdir("dest")
+        self.assertEqual(find(e.sf(dest), "Folder")["autocomplete"], dest + "/folder ")
+
+
 class PlistTests(unittest.TestCase):
     def test_build_and_plist(self):
         subprocess.run([sys.executable, "tools/build.py"], cwd=ROOT, check=True, capture_output=True)

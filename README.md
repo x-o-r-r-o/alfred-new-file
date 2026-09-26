@@ -16,9 +16,11 @@ Create a file in the folder of the front Finder window via the `new` keyword. Ty
 
 Leave the query empty to see every template. Type `new folder Photos` to create a folder. Existing files are never replaced: a clashing name gets a number, like `report 2.md`. Names starting with a dot, like `.env`, create hidden files.
 
+![Choosing a template](images/templates.png)
+
 Start with a path to create somewhere else, like `new ~/Projects/site/index.html`.
 
-![Choosing a template](images/templates.png)
+![Creating a file at a path](images/path.png)
 
 Alternatively, create a file in a selected folder via the Universal Action “New File Here”.
 

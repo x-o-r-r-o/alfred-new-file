@@ -36,6 +36,20 @@ Raycast demand this workflow replaces (downloads, 2026-09-26):
 3. [x] Workflow Configuration, icons, error states (no network / missing dependency)
 4. [ ] README with screenshots, `python3 tools/build.py --package` release, forum post, then Gallery submission when invited
 
+## Known limitations
+- Blank Pages, Numbers, Keynote and Excel documents can’t be generated without shipping binaries; users add their own via “Add as New File Template”.
+- Typing the full path of a file that already exists (like `new ~/site/index.html`) lists the templates for that folder instead of offering `index 2.html`, because the “New File Here” Universal Action passes a file’s path the same way. Separate the name with a space (`new ~/site index.html`) to get a numbered copy.
+- Finder is asked for its location with a 3-second timeout; a hung Finder falls back to the default folder.
+- Names with text-direction override characters (U+202A–202E, U+2066–2069) or control characters are refused; ⇥ offers a cleaned name.
+
+## Verify in real Alfred
+- [ ] First run asks for Automation permission for Finder; after “Don’t Allow”, the subtitle points to Privacy & Security › Automation and files go to the default folder.
+- [ ] “Front Finder window only when Finder is active” picks Finder when Alfred is summoned from Finder (menu-bar owner check).
+- [ ] “New File Here” on a folder and on a file; “Add as New File Template” with one and several files (tab-separated vs separate arguments).
+- [ ] Hotkey opens the template list; ⌘Y Quick Looks the template; ⌥↩ opens in the configured editor (name and full path).
+- [ ] Notification appears only for errors and for added templates.
+- [ ] Default and templates folder pickers accept folders and a `~/` default.
+
 ## Release checklist (Alfred forum + Gallery)
 Sources: alfred.app/submit, alfred.app/submit/styleguide, alfred.app/submit/screenshots, alfredforum.com topics 23976 and 23388.
 

@@ -21,6 +21,15 @@ const HOME = $.NSHomeDirectory().js;
 const UTF8 = $.NSUTF8StringEncoding;
 const TEST = env("NF_TEST", "") === "1"; // test suite: never touch Finder or open apps
 
+// Test suite safety net: never write outside the temporary folder, whatever the overrides say
+function guard(p) {
+  if (!TEST) return;
+  const tmp = $($.NSTemporaryDirectory().js).stringByResolvingSymlinksInPath.js.replace(/\/+$/, "");
+  const r = $(p).stringByResolvingSymlinksInPath.js;
+  const ok = [tmp, "/private/tmp", "/tmp", "/private/var/folders", "/var/folders"].some((t) => r === t || r.startsWith(t + "/"));
+  if (!ok) throw new Error(`test mode: refusing to write outside the temporary folder: ${p}`);
+}
+
 // Extensions textutil can produce from plain text (for the clipboard action and the seed).
 const TEXTUTIL = ["rtf", "docx", "doc", "odt"];
 const SCRIPT_EXTS = ["sh", "bash", "zsh", "fish", "py", "rb", "pl", "php", "js", "mjs", "command", "tool", "swift", "lua", "tcl"];
@@ -177,10 +186,20 @@ function splitName(name) {
   return { base: name.slice(0, i), ext };
 }
 
+// Bidi overrides/isolates can disguise a name ("txt.exe" shown as "exe.txt"); C0/C1 controls break titles
+const BIDI = /[\u202a-\u202e\u2066-\u2069]/g;
+const CONTROL = /[\u0000-\u001f\u007f-\u009f]/g;
+
+// Display strings only (titles, subtitles): the real value stays in arg and variables
+function clean(s) {
+  return typeof s === "string" ? s.replace(BIDI, "").replace(/[\r\n\t]+/g, " ").replace(CONTROL, "") : s;
+}
+
 function nameError(name) {
   if (name === "") return "Type a name";
   if (/[\/:]/.test(name)) return "Names can’t contain “/” or “:”";
-  if (/[\u0000-\u001f\u007f]/.test(name)) return "Names can’t contain line breaks, tabs or control characters";
+  if (/[\u0000-\u001f\u007f-\u009f]/.test(name)) return "Names can’t contain line breaks, tabs or control characters";
+  if (/[\u202a-\u202e\u2066-\u2069]/.test(name)) return "Names can’t contain text-direction override characters";
   if (name === "." || name === "..") return "“.” and “..” aren’t valid names";
   if (utf8Length(name) > 250) return "That name is too long";
   return null;
@@ -189,7 +208,8 @@ function nameError(name) {
 function sanitize(name) {
   return name
     .replace(/[\r\n\t]+/g, " ")
-    .replace(/[\u0000-\u001f\u007f]/g, "")
+    .replace(CONTROL, "")
+    .replace(BIDI, "")
     .replace(/[\/:]/g, "-")
     .replace(/\s+/g, " ")
     .trim();
@@ -261,6 +281,7 @@ const SEED = [
 // place in one step, so an interrupted or concurrent run never leaves a half-seeded folder.
 function seed(path) {
   if (exists(path)) return true;
+  guard(path);
   const scratch = `${parent(path)}/.seeding-${$.NSUUID.UUID.UUIDString.js}`;
   if (!mkdirs(scratch)) return false;
   for (const [name, content, mode] of SEED) {
@@ -343,6 +364,7 @@ function recordUsage(file) {
   const p = usagePath();
   if (!p || !file) return;
   const list = [file, ...loadUsage().filter((f) => f !== file)].slice(0, 30);
+  guard(p);
   mkdirs(parent(p));
   textToData(JSON.stringify(list)).writeToFileAtomically(p, true);
 }
@@ -510,6 +532,13 @@ function parseQuery(query) {
 
 // ---------- Script Filter ----------
 
+function display(item) {
+  item.title = clean(item.title);
+  item.subtitle = clean(item.subtitle);
+  for (const m of Object.values(item.mods || {})) m.subtitle = clean(m.subtitle);
+  return item;
+}
+
 function icon(name) {
   return { path: `icons/${name}.png` };
 }
@@ -621,6 +650,7 @@ function filterItems(query) {
       items[items.length - 1].autocomplete = (ctx.prefix || "") + untitled(t);
     }
     items.push(createItem(ctx, { name: "untitled folder", kind: "folder", title: "Folder", subtitle: `untitled folder ${where(ctx)} · or type “folder <name>”`, icon: icon("folder") }));
+    items[items.length - 1].autocomplete = (ctx.prefix || "") + "folder ";
     if (tpl.error) items.push(info(tpl.error, "Set the templates folder in the Workflow’s Configuration", "error"));
     else if (!tpl.list.length) items.push(info("No templates yet", "Add files to the templates folder, or use the “Add as New File Template” Universal Action"));
     if (tpl.dir) items.push(openTemplatesItem(tpl.dir));
@@ -727,6 +757,7 @@ function contentsFor(name, dir, templatePath, action) {
 // Create without ever overwriting: every write is exclusive, and on a clash the next
 // numbered name is tried, so two runs racing for the same name both succeed.
 function createFile(dir, name, templatePath, action) {
+  guard(dir);
   const isPkg = templatePath && isDir(templatePath);
   let content = null;
   if (!isPkg) {
@@ -773,6 +804,7 @@ function createError(dir, name) {
 }
 
 function createFolder(dir, name) {
+  guard(dir);
   const precheck = env("NF_TEST_NO_PRECHECK", "") !== "1";
   for (const n of candidates(name, true)) {
     const p = join(dir, n);
@@ -814,7 +846,7 @@ function runAction() {
     if (!dir) return "No templates folder";
     const t = templatesDir();
     if (t && !t.custom && standardize(dir) === t.path) seed(t.path);
-    else mkdirs(dir);
+    else if (!isDir(dir)) { guard(dir); mkdirs(dir); }
     return perform("open", dir);
   }
   const name = env("nf_name", "");
@@ -834,6 +866,7 @@ function runAction() {
 function addTemplates(arg) {
   const t = templatesDir();
   if (!t) return "Workflow data folder is not set";
+  guard(t.path);
   if (!t.custom) seed(t.path);
   if (!mkdirs(t.path) && !isDir(t.path)) return `Can’t create ${tilde(t.path)}`;
   const paths = arg.split("\t").map((s) => s.replace(/\n+$/, "")).filter(Boolean);
@@ -869,7 +902,7 @@ function run(argv) {
   try {
     switch (cmd) {
       case "filter":
-        return JSON.stringify({ skipknowledge: true, items: filterItems(query) });
+        return JSON.stringify({ skipknowledge: true, items: filterItems(query).map(display) });
       case "run":
         return runAction();
       case "add-template":
