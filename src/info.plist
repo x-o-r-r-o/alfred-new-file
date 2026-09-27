@@ -655,7 +655,7 @@ Configure a Hotkey to show the templates, and set where files go, what &lt;kbd&g
 	<key>variablesdontexport</key>
 	<array/>
 	<key>version</key>
-	<string>1.0.0</string>
+	<string>1.1.0</string>
 	<key>webaddress</key>
 	<string>https://github.com/x-o-r-r-o/alfred-new-file</string>
 </dict>
