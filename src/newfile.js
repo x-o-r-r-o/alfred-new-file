@@ -308,7 +308,7 @@ function loadTemplates() {
   if (!isDir(t.path)) return { error: `Templates folder not found: ${tilde(t.path)}`, dir: t.path, list: [] };
   const names = FM.contentsOfDirectoryAtPathError(t.path, null);
   const list = [];
-  if (names.isNil()) return { error: `Can’t read the templates folder ${tilde(t.path)}`, dir: t.path, list };
+  if (names.isNil()) return { error: `Couldn’t read the templates folder ${tilde(t.path)}`, dir: t.path, list };
   {
     for (const n of names.js.map((x) => x.js)) {
       if (JUNK.has(n) || n.startsWith("._") || n.startsWith(".seeding-")) continue;
@@ -760,7 +760,7 @@ function contentsFor(name, dir, templatePath, action, given) {
     return d ? { data: d } : { error: `textutil couldn’t create a .${ext} file` };
   }
   const d = readData(templatePath);
-  if (!d) return { error: `Can’t read the template “${basename(templatePath)}”` };
+  if (!d) return { error: `Couldn’t read the template “${basename(templatePath)}”` };
   const text = dataToText(d);
   if (text !== null && text.includes("{{")) return { data: textToData(fillPlaceholders(text, name, dir)) };
   return { data: d };
@@ -886,7 +886,7 @@ function addTemplates(arg) {
   if (!t) return "Workflow data folder is not set";
   guard(t.path);
   if (!t.custom) seed(t.path);
-  if (!mkdirs(t.path) && !isDir(t.path)) return `Can’t create ${tilde(t.path)}`;
+  if (!mkdirs(t.path) && !isDir(t.path)) return `Couldn’t create ${tilde(t.path)}`;
   const paths = arg.split("\t").map((s) => s.replace(/\n+$/, "")).filter(Boolean);
   if (!paths.length) return "Select a file first";
   const added = [], problems = [];

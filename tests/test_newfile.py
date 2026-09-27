@@ -730,7 +730,7 @@ class Audit3Tests(unittest.TestCase):
         os.chmod(custom, 0o000)
         try:
             items = e.sf("", templates_folder=custom)
-            self.assertIn("Can’t read the templates folder", " ".join(titles(items)))
+            self.assertIn("Couldn’t read the templates folder", " ".join(titles(items)))
             self.assertNotIn("No templates yet", titles(items))
         finally:
             os.chmod(custom, 0o755)
